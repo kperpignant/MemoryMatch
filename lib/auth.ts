@@ -2,21 +2,77 @@
  * Server-side identity (PRD §31): resolve the authenticated Clerk session to
  * our `users` row. Never trust client-supplied user ids — every mutation calls
  * this and uses the returned row's id.
+ *
+ * The Clerk webhook is the source of truth for user provisioning in production,
+ * but it can lag behind the session (or be unconfigured in local dev). To avoid
+ * racing it, we lazily create the row on first authenticated request, reusing
+ * the same 18+ gate the webhook enforces.
  */
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '@/lib/db'
+
+function isAtLeast18(dobIso: string): boolean {
+  const dob = new Date(dobIso)
+  if (Number.isNaN(dob.getTime())) return false
+  const cutoff = new Date()
+  cutoff.setFullYear(cutoff.getFullYear() - 18)
+  return dob <= cutoff
+}
 
 export async function requireUser() {
   const { userId: clerkId } = await auth()
   if (!clerkId) throw new Error('Unauthorized')
 
-  const [user] = await db()
+  const dbc = db()
+
+  const [existing] = await dbc
     .select()
     .from(schema.users)
     .where(and(eq(schema.users.authProviderId, clerkId), eq(schema.users.status, 'active')))
     .limit(1)
+  if (existing) return existing
 
-  if (!user) throw new Error('Unauthorized: no active account')
-  return user
+  // Lazy provision — the webhook hasn't created this row yet (or isn't wired).
+  const cc = await clerkClient()
+  const clerkUser = await cc.users.getUser(clerkId)
+
+  const dob = (clerkUser.unsafeMetadata?.date_of_birth as string | undefined) ?? null
+  if (!dob || !isAtLeast18(dob)) {
+    // DOB is captured during onboarding (writes unsafeMetadata.date_of_birth);
+    // until that's set we can't activate an account (18+ gate).
+    throw new Error('Unauthorized: 18+ date of birth required')
+  }
+
+  const email =
+    clerkUser.primaryEmailAddress?.emailAddress ??
+    clerkUser.emailAddresses[0]?.emailAddress ??
+    null
+  if (!email) throw new Error('Unauthorized: no email on account')
+
+  const displayName =
+    [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() ||
+    email.split('@')[0]
+
+  const [created] = await dbc
+    .insert(schema.users)
+    .values({
+      authProviderId: clerkId,
+      email,
+      displayName,
+      dateOfBirth: dob,
+      status: 'active',
+    })
+    .onConflictDoNothing()
+    .returning()
+  if (created) return created
+
+  // Lost a race (webhook or a parallel request inserted between our read+write).
+  const [now] = await dbc
+    .select()
+    .from(schema.users)
+    .where(and(eq(schema.users.authProviderId, clerkId), eq(schema.users.status, 'active')))
+    .limit(1)
+  if (!now) throw new Error('Unauthorized: no active account')
+  return now
 }

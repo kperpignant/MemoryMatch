@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { OnboardingAuthenticated } from '@/app/onboarding/onboarding-authenticated'
 import { OnboardingWizard, type OnboardingData } from '@/components/onboarding/onboarding-wizard'
@@ -8,7 +9,11 @@ const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
 
 export default function OnboardingPage() {
   if (clerkConfigured) {
-    return <OnboardingAuthenticated />
+    return (
+      <Suspense>
+        <OnboardingAuthenticated />
+      </Suspense>
+    )
   }
 
   return <OnboardingWithoutAuth />

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Y2KWindow } from '@/components/y2k-window'
 import { ReelPlayer, type ReelFrame } from '@/components/reel-player'
@@ -8,16 +9,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { PixelDisc, PixelStar } from '@/components/pixel-icons'
-import { Plus, Trash2, ChevronUp, ChevronDown, Save, Check } from 'lucide-react'
+import { Plus, Trash2, ChevronUp, ChevronDown, Save, Check, Upload, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { saveReel } from '@/lib/actions/reels'
 
-// Human-made Strudel background beats (no AI/Suno). Audio never autoplays.
-const BEATS = [
-  { id: 'tape-loop', label: 'lo-fi tape loop', vibe: 'warm & nostalgic' },
-  { id: 'dialup-dream', label: 'dial-up dream', vibe: 'glitchy & soft' },
-  { id: 'arcade-sunset', label: 'arcade sunset', vibe: 'bright & playful' },
-  { id: 'midnight-modem', label: 'midnight modem', vibe: 'late & mellow' },
-]
+type Beat = { id: string; title: string; vibe: string; audioUrl: string }
 
 // Sample clips a user could pull from their camera roll.
 const GALLERY = [
@@ -34,19 +30,40 @@ type EditorFrame = ReelFrame & { id: string }
 let uid = 0
 const newId = () => `f${++uid}`
 
-export function ReelBuilder({
-  onSave,
-}: {
-  onSave?: (reel: { frames: ReelFrame[]; beat: string }) => void
-}) {
+export function ReelBuilder({ beats }: { beats: Beat[] }) {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [frames, setFrames] = useState<EditorFrame[]>([
     { id: newId(), src: GALLERY[0], caption: 'golden hour drives', duration: 4 },
   ])
-  const [beat, setBeat] = useState(BEATS[0].id)
+  const [beatId, setBeatId] = useState<string | null>(beats[0]?.id ?? null)
   const [selected, setSelected] = useState(0)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
 
-  const beatLabel = BEATS.find((b) => b.id === beat)?.label
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setSaveError(null)
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body })
+      const data = (await res.json()) as { url?: string; error?: string }
+      if (!res.ok || !data.url) throw new Error(data.error ?? 'Upload failed')
+      addFrame(data.url)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const selectedBeat = beats.find((b) => b.id === beatId)
 
   function addFrame(src: string) {
     setFrames((f) => [...f, { id: newId(), src, caption: '', duration: 4 }])
@@ -71,6 +88,26 @@ export function ReelBuilder({
   function update(i: number, patch: Partial<EditorFrame>) {
     setFrames((f) => f.map((fr, idx) => (idx === i ? { ...fr, ...patch } : fr)))
     setSaved(false)
+  }
+
+  function handleSave() {
+    setSaveError(null)
+    startTransition(async () => {
+      try {
+        await saveReel({
+          beatId: beatId ?? undefined,
+          frames: frames.map((f) => ({
+            mediaUrl: f.src,
+            caption: f.caption || undefined,
+            durationMs: (f.duration ?? 4) * 1000,
+          })),
+        })
+        setSaved(true)
+        router.push('/me')
+      } catch (err) {
+        setSaveError(err instanceof Error ? err.message : 'Save failed')
+      }
+    })
   }
 
   const totalSecs = frames.reduce((s, f) => s + (f.duration ?? 4), 0)
@@ -204,6 +241,32 @@ export function ReelBuilder({
 
           {/* Clip gallery */}
           <Y2KWindow title="add from your clips">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Upload your own photo, or pick a sample below.
+              </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleUpload}
+              />
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shrink-0"
+                disabled={uploading}
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploading ? (
+                  <Loader2 size={14} className="mr-1.5 animate-spin" />
+                ) : (
+                  <Upload size={14} className="mr-1.5" />
+                )}
+                {uploading ? 'Uploading…' : 'Upload photo'}
+              </Button>
+            </div>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
               {GALLERY.map((src) => (
                 <button
@@ -232,14 +295,14 @@ export function ReelBuilder({
               autoplays.
             </p>
             <div className="grid gap-2 sm:grid-cols-2">
-              {BEATS.map((b) => (
+              {beats.map((b) => (
                 <button
                   key={b.id}
                   type="button"
-                  onClick={() => setBeat(b.id)}
+                  onClick={() => setBeatId(b.id)}
                   className={cn(
                     'flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors',
-                    beat === b.id
+                    beatId === b.id
                       ? 'border-primary bg-primary/10'
                       : 'border-border bg-card hover:border-primary/40',
                   )}
@@ -249,13 +312,13 @@ export function ReelBuilder({
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium text-foreground">
-                      {b.label}
+                      {b.title}
                     </span>
                     <span className="block truncate text-xs text-muted-foreground">
                       {b.vibe}
                     </span>
                   </span>
-                  {beat === b.id && (
+                  {beatId === b.id && (
                     <Check size={16} className="ml-auto shrink-0 text-primary" />
                   )}
                 </button>
@@ -267,24 +330,25 @@ export function ReelBuilder({
         {/* PREVIEW (sticky on desktop) */}
         <div className="lg:sticky lg:top-6 lg:self-start">
           <Y2KWindow title="live preview" accent>
-            <ReelPlayer frames={frames} beatLabel={beatLabel} />
+            <ReelPlayer frames={frames} beatLabel={selectedBeat?.title} />
             <div className="mt-4 flex flex-col gap-2">
+              {saveError && (
+                <p className="rounded-lg bg-destructive/10 px-3 py-2 text-center text-sm text-destructive">
+                  {saveError}
+                </p>
+              )}
               <Button
                 size="lg"
                 className="w-full font-semibold"
-                disabled={frames.length === 0}
-                onClick={() => {
-                  onSave?.({
-                    frames: frames.map(({ id, ...f }) => f),
-                    beat,
-                  })
-                  setSaved(true)
-                }}
+                disabled={frames.length === 0 || isPending}
+                onClick={handleSave}
               >
                 {saved ? (
                   <>
                     <Check size={16} className="mr-1.5" /> Saved to your Vibe Page
                   </>
+                ) : isPending ? (
+                  'Saving…'
                 ) : (
                   <>
                     <Save size={16} className="mr-1.5" /> Save reel
