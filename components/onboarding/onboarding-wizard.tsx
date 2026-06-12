@@ -21,12 +21,27 @@ import { cn } from '@/lib/utils'
 export type OnboardingData = {
   username: string
   displayName: string
+  dateOfBirth: string
   intents: IntentId[]
   softLaunch: boolean
   theme: ThemeId
   bio: string
   mood: string
   interests: string[]
+}
+
+function isAtLeast18(dobIso: string): boolean {
+  const dob = new Date(dobIso)
+  if (Number.isNaN(dob.getTime())) return false
+  const cutoff = new Date()
+  cutoff.setFullYear(cutoff.getFullYear() - 18)
+  return dob <= cutoff
+}
+
+function maxDobFor18Plus(): string {
+  const cutoff = new Date()
+  cutoff.setFullYear(cutoff.getFullYear() - 18)
+  return cutoff.toISOString().slice(0, 10)
 }
 
 const STEP_TITLES = ['Your name', 'Your vibe', 'Your look', 'Your top 8']
@@ -39,6 +54,7 @@ export function OnboardingWizard({
   const [step, setStep] = React.useState(0)
   const [username, setUsername] = React.useState('')
   const [displayName, setDisplayName] = React.useState('')
+  const [dateOfBirth, setDateOfBirth] = React.useState('')
   const [intents, setIntents] = React.useState<IntentId[]>(['slow-burn'])
   const [softLaunch, setSoftLaunch] = React.useState(true)
   const [theme, setTheme] = React.useState<ThemeId>('soft-pixel-romance')
@@ -55,8 +71,18 @@ export function OnboardingWizard({
     return null
   }, [username])
 
+  const dateOfBirthError = React.useMemo(() => {
+    if (!dateOfBirth) return null
+    if (!isAtLeast18(dateOfBirth)) return 'You must be at least 18 to join.'
+    return null
+  }, [dateOfBirth])
+
   const step1Valid =
-    username.length >= 3 && !usernameError && displayName.trim().length > 0
+    username.length >= 3 &&
+    !usernameError &&
+    displayName.trim().length > 0 &&
+    dateOfBirth.length > 0 &&
+    !dateOfBirthError
 
   function toggleIntent(id: IntentId) {
     setIntents((prev) =>
@@ -82,6 +108,7 @@ export function OnboardingWizard({
       onComplete?.({
         username,
         displayName,
+        dateOfBirth,
         intents,
         softLaunch,
         theme,
@@ -129,6 +156,9 @@ export function OnboardingWizard({
             usernameError={usernameError}
             displayName={displayName}
             setDisplayName={setDisplayName}
+            dateOfBirth={dateOfBirth}
+            setDateOfBirth={setDateOfBirth}
+            dateOfBirthError={dateOfBirthError}
           />
         )}
         {step === 1 && (
@@ -187,12 +217,18 @@ function StepName({
   usernameError,
   displayName,
   setDisplayName,
+  dateOfBirth,
+  setDateOfBirth,
+  dateOfBirthError,
 }: {
   username: string
   setUsername: (v: string) => void
   usernameError: string | null
   displayName: string
   setDisplayName: (v: string) => void
+  dateOfBirth: string
+  setDateOfBirth: (v: string) => void
+  dateOfBirthError: string | null
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -244,6 +280,29 @@ function StepName({
         />
         <p className="text-xs text-muted-foreground">
           What people see on your Vibe Page.
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="dateOfBirth">Date of birth</Label>
+        <Input
+          id="dateOfBirth"
+          type="date"
+          value={dateOfBirth}
+          onChange={(e) => setDateOfBirth(e.target.value)}
+          max={maxDobFor18Plus()}
+          aria-invalid={!!dateOfBirthError}
+          aria-describedby="dob-help"
+          required
+        />
+        <p
+          id="dob-help"
+          className={cn(
+            'text-xs',
+            dateOfBirthError ? 'text-destructive' : 'text-muted-foreground',
+          )}
+        >
+          {dateOfBirthError ?? 'You must be 18 or older to use MemoryMatch.'}
         </p>
       </div>
     </div>
