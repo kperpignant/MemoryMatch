@@ -1,0 +1,2207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MemoryMatch — Y2K UI Refresh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700&family=Fredoka:wght@500;600;700&family=Gabarito:wght@500;600;700&family=Onest:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   MemoryMatch — Y2K refresh design tokens
+   Soft Pixel Romance (default) + 4 alternate themes
+   ============================================================ */
+
+:root {
+  /* type */
+  --font-heading: 'Baloo 2', system-ui, sans-serif;
+  --font-body: 'Onest', system-ui, sans-serif;
+  --font-mono: 'Space Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+  /* spacing scale — multiplied by tweak */
+  --space: 1;
+  --pad-window: calc(22px * var(--space));
+  --pad-page: calc(20px * var(--space));
+  --gap-module: calc(26px * var(--space));
+  --gap: calc(14px * var(--space));
+  --gap-sm: calc(9px * var(--space));
+
+  --radius-window: 24px;
+  --radius-card: 18px;
+  --radius-pill: 999px;
+
+  /* holo intensity 0..1 */
+  --holo-alpha: 0.85;
+
+  /* ===== Soft Pixel Romance ===== */
+  --bg: oklch(0.93 0.025 339);
+  --bg-deep: oklch(0.9 0.035 332);
+  --surface: oklch(0.95 0.045 86);
+  --surface-2: oklch(0.97 0.03 86);
+  --ink: oklch(0.31 0.06 318);
+  --muted: oklch(0.5 0.055 318);
+  --primary: oklch(0.56 0.115 312);
+  --primary-deep: oklch(0.48 0.115 312);
+  --primary-fg: oklch(0.98 0.012 86);
+  --secondary: oklch(0.84 0.075 343);
+  --accent: oklch(0.8 0.075 311);
+  --border: oklch(0.85 0.05 330);
+  --input-bg: oklch(0.98 0.018 86);
+  --online: oklch(0.72 0.15 155);
+  --match: oklch(0.84 0.075 343);
+
+  /* pastel companions (same chroma family) for the holo set */
+  --pastel-aqua: oklch(0.86 0.06 190);
+  --pastel-sky: oklch(0.84 0.06 245);
+  --pastel-butter: oklch(0.92 0.06 95);
+  --pastel-rose: oklch(0.86 0.07 343);
+  --pastel-lilac: oklch(0.82 0.075 311);
+
+  --holo: linear-gradient(
+    115deg,
+    var(--pastel-aqua) 0%,
+    var(--pastel-lilac) 22%,
+    var(--pastel-rose) 46%,
+    var(--pastel-butter) 70%,
+    var(--pastel-sky) 88%,
+    var(--pastel-aqua) 100%
+  );
+
+  --shadow-window:
+    inset 0 1.5px 0 oklch(1 0 0 / 0.65),
+    inset 0 -2px 5px oklch(0.4 0.06 318 / 0.07),
+    0 14px 34px -14px oklch(0.4 0.06 318 / 0.3);
+  --shadow-soft: 0 6px 18px -8px oklch(0.4 0.06 318 / 0.25);
+}
+
+[data-theme='late-night-aim'] {
+  --bg: oklch(0.25 0.05 275);
+  --bg-deep: oklch(0.22 0.05 275);
+  --surface: oklch(0.31 0.06 278);
+  --surface-2: oklch(0.35 0.06 278);
+  --ink: oklch(0.93 0.03 280);
+  --muted: oklch(0.73 0.04 280);
+  --primary: oklch(0.72 0.14 230);
+  --primary-deep: oklch(0.63 0.14 230);
+  --primary-fg: oklch(0.18 0.04 275);
+  --secondary: oklch(0.45 0.1 300);
+  --accent: oklch(0.7 0.13 200);
+  --border: oklch(0.42 0.06 278);
+  --input-bg: oklch(0.27 0.05 277);
+  --match: oklch(0.7 0.13 320);
+  --pastel-aqua: oklch(0.75 0.1 200);
+  --pastel-sky: oklch(0.72 0.12 245);
+  --pastel-butter: oklch(0.8 0.08 95);
+  --pastel-rose: oklch(0.72 0.11 343);
+  --pastel-lilac: oklch(0.68 0.12 300);
+  --shadow-window:
+    inset 0 1.5px 0 oklch(1 0 0 / 0.12),
+    inset 0 -2px 5px oklch(0 0 0 / 0.25),
+    0 14px 34px -14px oklch(0 0 0 / 0.55);
+  --shadow-soft: 0 6px 18px -8px oklch(0 0 0 / 0.5);
+}
+
+[data-theme='cyber-cafe'] {
+  --bg: oklch(0.94 0.02 200);
+  --bg-deep: oklch(0.91 0.025 200);
+  --surface: oklch(0.97 0.015 190);
+  --surface-2: oklch(0.99 0.01 190);
+  --ink: oklch(0.3 0.04 240);
+  --muted: oklch(0.5 0.04 230);
+  --primary: oklch(0.58 0.13 215);
+  --primary-deep: oklch(0.5 0.13 215);
+  --primary-fg: oklch(0.98 0.01 190);
+  --secondary: oklch(0.84 0.09 190);
+  --accent: oklch(0.78 0.11 165);
+  --border: oklch(0.84 0.03 210);
+  --input-bg: oklch(0.99 0.008 190);
+  --match: oklch(0.78 0.11 165);
+  --pastel-aqua: oklch(0.86 0.07 190);
+  --pastel-sky: oklch(0.84 0.07 240);
+  --pastel-butter: oklch(0.92 0.05 110);
+  --pastel-rose: oklch(0.86 0.05 343);
+  --pastel-lilac: oklch(0.84 0.06 280);
+}
+
+[data-theme='arcade-crush'] {
+  --bg: oklch(0.93 0.03 25);
+  --bg-deep: oklch(0.9 0.035 25);
+  --surface: oklch(0.96 0.025 60);
+  --surface-2: oklch(0.98 0.018 60);
+  --ink: oklch(0.3 0.06 20);
+  --muted: oklch(0.5 0.06 25);
+  --primary: oklch(0.58 0.19 25);
+  --primary-deep: oklch(0.5 0.19 25);
+  --primary-fg: oklch(0.98 0.01 60);
+  --secondary: oklch(0.84 0.11 50);
+  --accent: oklch(0.78 0.13 350);
+  --border: oklch(0.84 0.05 35);
+  --input-bg: oklch(0.98 0.015 60);
+  --match: oklch(0.78 0.13 350);
+  --pastel-aqua: oklch(0.86 0.06 170);
+  --pastel-sky: oklch(0.84 0.06 250);
+  --pastel-butter: oklch(0.9 0.08 85);
+  --pastel-rose: oklch(0.84 0.09 10);
+  --pastel-lilac: oklch(0.82 0.07 330);
+}
+
+[data-theme='dreamcast-summer'] {
+  --bg: oklch(0.94 0.02 220);
+  --bg-deep: oklch(0.91 0.025 220);
+  --surface: oklch(0.97 0.015 210);
+  --surface-2: oklch(0.99 0.01 210);
+  --ink: oklch(0.32 0.05 250);
+  --muted: oklch(0.52 0.04 250);
+  --primary: oklch(0.62 0.13 250);
+  --primary-deep: oklch(0.54 0.13 250);
+  --primary-fg: oklch(0.98 0.01 210);
+  --secondary: oklch(0.87 0.08 95);
+  --accent: oklch(0.82 0.1 200);
+  --border: oklch(0.85 0.03 220);
+  --input-bg: oklch(0.99 0.008 210);
+  --match: oklch(0.87 0.08 95);
+  --pastel-aqua: oklch(0.86 0.07 200);
+  --pastel-sky: oklch(0.84 0.07 250);
+  --pastel-butter: oklch(0.92 0.07 95);
+  --pastel-rose: oklch(0.86 0.05 343);
+  --pastel-lilac: oklch(0.84 0.05 290);
+}
+
+/* ============ base ============ */
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.35s ease, color 0.35s ease;
+}
+
+/* dreamy holographic wash behind everything */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: calc(0.22 * var(--holo-alpha));
+  background:
+    radial-gradient(42% 36% at 12% 8%, var(--pastel-lilac), transparent 70%),
+    radial-gradient(46% 38% at 88% 18%, var(--pastel-aqua), transparent 70%),
+    radial-gradient(50% 42% at 22% 92%, var(--pastel-butter), transparent 70%),
+    radial-gradient(44% 38% at 86% 84%, var(--pastel-rose), transparent 70%);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-heading);
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+
+p { margin: 0; text-wrap: pretty; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, textarea {
+  font-family: inherit;
+}
+
+img { display: block; max-width: 100%; }
+
+::selection { background: var(--accent); color: var(--ink); }
+
+/* ============ layout ============ */
+
+.mm-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: var(--pad-page);
+  padding-bottom: calc(var(--pad-page) * 3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-module);
+}
+
+@media (min-width: 980px) {
+  .mm-page.mm-page-wide { max-width: 1024px; }
+}
+
+/* ============ window module ============ */
+
+.mm-window {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-window);
+  box-shadow: var(--shadow-window);
+  overflow: hidden;
+  transition: background 0.35s ease, border-color 0.35s ease;
+}
+
+.mm-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: calc(11px * var(--space)) calc(18px * var(--space));
+  background: var(--primary);
+  color: var(--primary-fg);
+  position: relative;
+}
+
+.mm-titlebar.mm-titlebar-soft {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-bottom: 1px solid var(--border);
+}
+
+/* iridescent hairline under the titlebar */
+.mm-titlebar::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -2px;
+  height: 2px;
+  background: var(--holo);
+  opacity: var(--holo-alpha);
+}
+
+.mm-titlebar-text {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mm-window-dots {
+  display: flex;
+  gap: 5px;
+  flex: none;
+}
+.mm-window-dots span {
+  width: 9px; height: 9px;
+  border-radius: 3px;
+  background: currentColor;
+  opacity: 0.32;
+}
+.mm-window-dots span:last-child {
+  background: transparent;
+  border: 1.5px solid currentColor;
+  opacity: 0.45;
+}
+
+.mm-window-body {
+  padding: var(--pad-window);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  background-image: linear-gradient(to bottom, oklch(1 0 0 / 0.28), oklch(1 0 0 / 0) 56px);
+}
+
+.mm-window-body.mm-flush { padding: 0; gap: 0; }
+
+/* ============ buttons ============ */
+
+.mm-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 15.5px;
+  padding: calc(12px * var(--space)) calc(22px * var(--space));
+  min-height: 46px;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.12s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.mm-btn:active { transform: scale(0.97); }
+
+.mm-btn-primary {
+  background: linear-gradient(to bottom, oklch(1 0 0 / 0.22), oklch(1 0 0 / 0) 55%) , var(--primary);
+  color: var(--primary-fg);
+  box-shadow: var(--shadow-soft), inset 0 1px 0 oklch(1 0 0 / 0.35);
+}
+.mm-btn-primary:hover { background: linear-gradient(to bottom, oklch(1 0 0 / 0.3), oklch(1 0 0 / 0) 55%), var(--primary-deep); }
+
+/* holo sheen sweep on hover */
+.mm-btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--holo);
+  opacity: 0;
+  mix-blend-mode: soft-light;
+  transition: opacity 0.25s ease;
+}
+.mm-btn-primary:hover::after { opacity: var(--holo-alpha); }
+
+.mm-btn-ghost {
+  background: var(--surface-2);
+  color: var(--ink);
+  border-color: var(--border);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.5);
+}
+.mm-btn-ghost:hover { border-color: var(--primary); }
+
+.mm-btn-sm {
+  min-height: 38px;
+  padding: calc(8px * var(--space)) calc(16px * var(--space));
+  font-size: 14px;
+}
+
+.mm-btn:focus-visible,
+.mm-chip:focus-visible,
+.mm-icon-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.mm-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
+  transition: border-color 0.15s ease, transform 0.12s ease;
+}
+.mm-icon-btn:hover { border-color: var(--primary); }
+.mm-icon-btn:active { transform: scale(0.94); }
+
+/* ============ chips ============ */
+
+.mm-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-sm);
+}
+
+.mm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: 14px;
+  padding: calc(7px * var(--space)) calc(15px * var(--space));
+  min-height: 38px;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+button.mm-chip:hover { border-color: var(--primary); }
+button.mm-chip:active { transform: scale(0.96); }
+
+.mm-chip.mm-chip-on {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-fg);
+  box-shadow: var(--shadow-soft);
+}
+
+.mm-chip.mm-chip-soft {
+  background: color-mix(in oklch, var(--secondary) 45%, var(--surface-2));
+  border-color: color-mix(in oklch, var(--secondary) 70%, var(--border));
+}
+
+/* ============ inputs ============ */
+
+.mm-input, .mm-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--input-bg);
+  color: var(--ink);
+  font-size: 16px;
+  padding: calc(12px * var(--space)) calc(16px * var(--space));
+  box-shadow: inset 0 2px 4px oklch(0.4 0.06 318 / 0.06);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.mm-input:focus, .mm-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: inset 0 2px 4px oklch(0.4 0.06 318 / 0.06), 0 0 0 3px color-mix(in oklch, var(--primary) 25%, transparent);
+}
+.mm-input::placeholder, .mm-textarea::placeholder { color: var(--muted); opacity: 0.75; }
+
+.mm-textarea { resize: vertical; min-height: 86px; }
+
+.mm-label {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 14.5px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.mm-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+
+/* ============ misc ============ */
+
+.mm-muted { color: var(--muted); }
+.mm-mono { font-family: var(--font-mono); }
+
+.mm-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--primary);
+}
+
+/* holo ring avatar */
+.mm-avatar {
+  position: relative;
+  flex: none;
+  border-radius: 18px;
+  padding: 2.5px;
+  background: var(--holo);
+  box-shadow: var(--shadow-soft);
+}
+.mm-avatar > img, .mm-avatar > .mm-avatar-letter {
+  width: 100%; height: 100%;
+  border-radius: 15px;
+  object-fit: cover;
+}
+.mm-avatar-letter {
+  display: grid;
+  place-items: center;
+  background: var(--secondary);
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+.mm-avatar .mm-online-dot {
+  position: absolute;
+  right: -3px; bottom: -3px;
+  width: 13px; height: 13px;
+  border-radius: 50%;
+  background: var(--online);
+  border: 2.5px solid var(--surface);
+}
+
+/* holo text (used sparingly) */
+.mm-holo-text {
+  background: linear-gradient(100deg, var(--primary), color-mix(in oklch, var(--pastel-rose) 60%, var(--primary)), var(--primary-deep));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* progress bar */
+.mm-progress-track {
+  height: 9px;
+  border-radius: 99px;
+  background: color-mix(in oklch, var(--border) 60%, transparent);
+  overflow: hidden;
+  flex: 1;
+}
+.mm-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--holo);
+  box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.25);
+  transition: width 0.4s ease;
+}
+
+/* divider */
+.mm-divider {
+  border: none;
+  border-top: 1px dashed var(--border);
+  margin: calc(4px * var(--space)) 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+@keyframes mmFade { from { opacity: 0; } to { opacity: 1; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin></script>
+<script>
+// MemoryMatch sample data — ported from lib/memorymatch.ts
+window.MM_DATA = {
+  themes: [
+    { id: 'soft-pixel-romance', name: 'Soft Pixel Romance', blurb: 'Warm pastels, glossy chrome, blush hearts.', swatch: ['#8E6FB0', '#E8B6CE', '#FBE9C9'] },
+    { id: 'late-night-aim', name: 'Late Night AIM', blurb: 'Dim indigo, glowing buddy windows.', swatch: ['#5fb6e6', '#9b6fd4', '#2b2350'] },
+    { id: 'cyber-cafe', name: 'Cyber Café', blurb: 'Cool teal glass and mint accents.', swatch: ['#2f9ec9', '#54c9a6', '#eaf6f8'] },
+    { id: 'arcade-crush', name: 'Arcade Crush', blurb: 'Hot coral, candy buttons, high score.', swatch: ['#e2563a', '#f0a93f', '#f7d9c4'] },
+    { id: 'dreamcast-summer', name: 'Dreamcast Summer', blurb: 'Breezy blues with a sunny yellow swirl.', swatch: ['#5b78d6', '#e7c64a', '#82c8e0'] },
+  ],
+
+  intents: [
+    { id: 'open-to-dating', label: 'Open to dating', hint: 'Down to see where things go.' },
+    { id: 'slow-burn', label: 'Slow burn', hint: 'No rush. Let it simmer.' },
+    { id: 'friend-first', label: 'Friend first', hint: 'Start as pals, see what grows.' },
+    { id: 'just-browsing', label: 'Just browsing', hint: 'Window shopping for now.' },
+    { id: 'co-op-mode', label: 'Co-op mode', hint: 'Looking for a player two.' },
+    { id: 'social-discovery', label: 'Social discovery', hint: 'Here to meet interesting people.' },
+  ],
+
+  interests: [
+    'lo-fi beats', 'pixel art', 'retro gaming', 'vinyl records', 'film photography',
+    'indie games', 'anime', 'thrifting', 'journaling', 'synthwave', 'cozy games',
+    'sci-fi novels', 'baking', 'rollerblading', 'mixtapes', 'collage', 'plants',
+    'tarot', 'road trips', 'arcades', 'webcore', 'midi keyboards', 'sticker swaps',
+  ],
+
+  beats: [
+    { id: 'lofi-tape', title: 'lo-fi tape loop', vibe: 'warm & nostalgic' },
+    { id: 'dialup-dream', title: 'dial-up dream', vibe: 'glitchy & soft' },
+    { id: 'arcade-sunset', title: 'arcade sunset', vibe: 'bright & playful' },
+    { id: 'midnight-modem', title: 'midnight modem', vibe: 'late & mellow' },
+  ],
+
+  robin: {
+    username: 'mixtape_kid',
+    displayName: 'Robin',
+    pronouns: 'they/them',
+    age: 24,
+    location: 'Portland, OR',
+    mood: 'rewinding a good tape',
+    online: true,
+    intents: ['Slow burn', 'Friend first'],
+    blurb: "I make playlists for feelings that don't have names yet. Looking for someone to trade mixtapes and quiet Sundays with.",
+    nowPlaying: 'Boards of Canada — Roygbiv',
+    beatLabel: 'lo-fi tape loop',
+    frames: [
+      { src: 'mm/reels/sunset-drive.png', caption: 'golden hour drives', duration: 4 },
+      { src: 'mm/reels/polaroid-pile.png', caption: 'my polaroid pile', duration: 4 },
+      { src: 'mm/reels/bedroom-setup.png', caption: 'where the magic happens', duration: 4 },
+    ],
+    interests: ['mixtapes', 'film photography', 'lo-fi beats', 'vinyl records', 'thrifting', 'journaling', 'road trips', 'plants'],
+    top8: [
+      { username: 'pixelpetal', displayName: 'Mira', thumb: 'mm/reels/bedroom-setup.png' },
+      { username: 'arcadeghost', displayName: 'Dev', thumb: 'mm/reels/arcade-night.png' },
+      { username: 'softmodem', displayName: 'Lou', thumb: 'mm/reels/polaroid-pile.png' },
+      { username: 'cassettesun', displayName: 'Ari', thumb: 'mm/reels/sunset-drive.png' },
+      { username: 'noodlebowl', displayName: 'Kai', thumb: 'mm/reels/cafe-window.png' },
+      { username: 'zinequeen', displayName: 'Sam', thumb: 'mm/reels/skate-park.png' },
+      { username: 'glittercd', displayName: 'Bex', thumb: 'mm/reels/cafe-window.png' },
+      { username: 'dialup99', displayName: 'Theo', thumb: 'mm/reels/arcade-night.png' },
+    ],
+    prompts: [
+      { q: 'A perfect Sunday is...', a: 'Thrift crawl, then home to develop a roll of film with the windows open.' },
+      { q: "I'll instantly vibe with you if...", a: 'You have strong opinions about track order on an album.' },
+    ],
+  },
+
+  buddies: [
+    { username: 'pixelpetal', displayName: 'Mira', mood: 'drawing tiny worlds', intent: 'slow burn', thumb: 'mm/reels/bedroom-setup.png', online: true },
+    { username: 'arcadeghost', displayName: 'Dev', mood: 'chasing a high score', intent: 'friend first', thumb: 'mm/reels/arcade-night.png', online: true },
+    { username: 'noodlebowl', displayName: 'Kai', mood: 'rainy day ramen', intent: 'just browsing', thumb: 'mm/reels/cafe-window.png', online: true },
+    { username: 'zinequeen', displayName: 'Sam', mood: 'cutting and pasting', intent: 'slow burn', thumb: 'mm/reels/skate-park.png', online: true },
+    { username: 'glittercd', displayName: 'Bex', mood: 'shiny and new', intent: 'open to dating', thumb: 'mm/reels/cafe-window.png', online: true },
+    { username: 'cassettesun', displayName: 'Ari', mood: 'sunny and unbothered', intent: 'co-op mode', thumb: 'mm/reels/sunset-drive.png', online: false },
+    { username: 'softmodem', displayName: 'Lou', mood: 'late night online', intent: 'friend first', thumb: 'mm/reels/polaroid-pile.png', online: false },
+    { username: 'dialup99', displayName: 'Theo', mood: 'buffering...', intent: 'just browsing', thumb: 'mm/reels/arcade-night.png', online: false },
+  ],
+
+  mira: {
+    username: 'pixelpetal',
+    displayName: 'Mira',
+    mood: 'drawing tiny worlds',
+    thumb: 'mm/reels/bedroom-setup.png',
+    shared: ['pixel art', 'lo-fi beats', 'thrifting', 'cozy games'],
+    starters: [
+      'Okay, your reel gave me actual nostalgia. Where was that bedroom shot taken?',
+      "We're clearly both into pixel art — what are you making lately?",
+      'Trading a thrift-find story for a thrift-find story. You first.',
+    ],
+  },
+
+  clips: [
+    { src: 'mm/reels/sunset-drive.png', label: 'sunset drive' },
+    { src: 'mm/reels/arcade-night.png', label: 'arcade night' },
+    { src: 'mm/reels/bedroom-setup.png', label: 'bedroom setup' },
+    { src: 'mm/reels/polaroid-pile.png', label: 'polaroid pile' },
+    { src: 'mm/reels/skate-park.png', label: 'skate park' },
+    { src: 'mm/reels/cafe-window.png', label: 'cafe window' },
+  ],
+};
+</script>
+<script type="text/babel">
+// @ds-adherence-ignore -- omelette starter scaffold (raw elements/hex/px by design)
+
+/* BEGIN USAGE */
+// tweaks-panel.jsx
+// Reusable Tweaks shell + form-control helpers.
+// Exports (to window): useTweaks, TweaksPanel, TweakSection, TweakRow, TweakSlider,
+//   TweakToggle, TweakRadio, TweakSelect, TweakText, TweakNumber, TweakColor, TweakButton.
+//
+// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
+// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
+// individual prototypes don't re-roll it. Ships a consistent set of controls so you
+// don't hand-draw <input type="range">, segmented radios, steppers, etc.
+//
+// Usage (in an HTML file that loads React + Babel):
+//
+//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+//     "primaryColor": "#D97757",
+//     "palette": ["#D97757", "#29261b", "#f6f4ef"],
+//     "fontSize": 16,
+//     "density": "regular",
+//     "dark": false
+//   }/*EDITMODE-END*/;
+//
+//   function App() {
+//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+//     return (
+//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
+//         Hello
+//         <TweaksPanel>
+//           <TweakSection label="Typography" />
+//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
+//                        onChange={(v) => setTweak('fontSize', v)} />
+//           <TweakRadio  label="Density" value={t.density}
+//                        options={['compact', 'regular', 'comfy']}
+//                        onChange={(v) => setTweak('density', v)} />
+//           <TweakSection label="Theme" />
+//           <TweakColor  label="Primary" value={t.primaryColor}
+//                        options={['#D97757', '#2A6FDB', '#1F8A5B', '#7A5AE0']}
+//                        onChange={(v) => setTweak('primaryColor', v)} />
+//           <TweakColor  label="Palette" value={t.palette}
+//                        options={[['#D97757', '#29261b', '#f6f4ef'],
+//                                  ['#475569', '#0f172a', '#f1f5f9']]}
+//                        onChange={(v) => setTweak('palette', v)} />
+//           <TweakToggle label="Dark mode" value={t.dark}
+//                        onChange={(v) => setTweak('dark', v)} />
+//         </TweaksPanel>
+//       </div>
+//     );
+//   }
+//
+// TweakRadio is the segmented control for 2–3 short options (auto-falls-back to
+// TweakSelect past ~16/~10 chars per label); reach for TweakSelect directly when
+// options are many or long. For color tweaks always curate 3-4 options rather than
+// a free picker; an option can also be a whole 2–5 color palette (the stored value
+// is the array). The Tweak* controls are a floor, not a ceiling — build custom
+// controls inside the panel if a tweak calls for UI they don't cover.
+/* END USAGE */
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    transform:scale(var(--dc-inv-zoom,1));transform-origin:bottom right;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;box-sizing:border-box;width:100%;min-width:0;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;box-sizing:border-box;min-width:0;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+
+  .twk-chips{display:flex;gap:6px}
+  .twk-chip{position:relative;appearance:none;flex:1;min-width:0;height:46px;
+    padding:0;border:0;border-radius:6px;overflow:hidden;cursor:default;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.06);
+    transition:transform .12s cubic-bezier(.3,.7,.4,1),box-shadow .12s}
+  .twk-chip:hover{transform:translateY(-1px);
+    box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 4px 10px rgba(0,0,0,.12)}
+  .twk-chip[data-on="1"]{box-shadow:0 0 0 1.5px rgba(0,0,0,.85),
+    0 2px 6px rgba(0,0,0,.15)}
+  .twk-chip>span{position:absolute;top:0;bottom:0;right:0;width:34%;
+    display:flex;flex-direction:column;box-shadow:-1px 0 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i{flex:1;box-shadow:0 -1px 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i:first-child{box-shadow:none}
+  .twk-chip svg{position:absolute;top:6px;left:6px;width:13px;height:13px;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+`;
+
+// ── useTweaks ───────────────────────────────────────────────────────────────
+// Single source of truth for tweak values. setTweak persists via the host
+// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
+  // useState-style call doesn't write a "[object Object]" key into the persisted
+  // JSON block.
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+    // Same-window signal so in-page listeners (deck-stage rail thumbnails)
+    // can react — the parent message only reaches the host, not peers.
+    window.dispatchEvent(new CustomEvent('tweakchange', { detail: edits }));
+  }, []);
+  return [values, setTweak];
+}
+
+// ── TweaksPanel ─────────────────────────────────────────────────────────────
+// Floating shell. Registers the protocol listener BEFORE announcing
+// availability — if the announce ran first, the host's activate could land
+// before our handler exists and the toolbar toggle would silently no-op.
+// The close button posts __edit_mode_dismissed so the host's toolbar toggle
+// flips off in lockstep; the host echoes __deactivate_edit_mode back which
+// is what actually hides the panel.
+function TweaksPanel({ title = 'Tweaks', children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" data-omelette-chrome=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">
+          {children}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Layout helpers ──────────────────────────────────────────────────────────
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  // The active value is read by pointer-move handlers attached for the lifetime
+  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  // Segments wrap mid-word once per-segment width runs out. The track is
+  // ~248px (280 panel − 28 body pad − 4 seg pad), each button loses 12px
+  // to its own padding, and 11.5px system-ui averages ~6.3px/char — so 2
+  // options fit ~16 chars each, 3 fit ~10. Past that (or >3 options), fall
+  // back to a dropdown rather than wrap.
+  const labelLen = (o) => String(typeof o === 'object' ? o.label : o).length;
+  const maxLen = options.reduce((m, o) => Math.max(m, labelLen(o)), 0);
+  const fitsAsSegments = maxLen <= ({ 2: 16, 3: 10 }[options.length] ?? 0);
+  if (!fitsAsSegments) {
+    // <select> emits strings — map back to the original option value so the
+    // fallback stays type-preserving (numbers, booleans) like the segment path.
+    const resolve = (s) => {
+      const m = options.find((o) => String(typeof o === 'object' ? o.value : o) === s);
+      return m === undefined ? s : typeof m === 'object' ? m.value : m;
+    };
+    return <TweakSelect label={label} value={value} options={options}
+                        onChange={(s) => onChange(resolve(s))} />;
+  }
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+// Relative-luminance contrast pick — checkmarks drawn over a swatch need to
+// read on both #111 and #fafafa without per-option configuration. Hex input
+// only (#rgb / #rrggbb); named or rgb()/hsl() colors fall through to "light".
+function __twkIsLight(hex) {
+  const h = String(hex).replace('#', '');
+  const x = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.padEnd(6, '0');
+  const n = parseInt(x.slice(0, 6), 16);
+  if (Number.isNaN(n)) return true;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return r * 299 + g * 587 + b * 114 > 148000;
+}
+
+const __TwkCheck = ({ light }) => (
+  <svg viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M3 7.2 5.8 10 11 4.2" fill="none" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
+  </svg>
+);
+
+// TweakColor — curated color/palette picker. Each option is either a single
+// hex string or an array of 1-5 hex strings; the card adapts — a lone color
+// renders solid, a palette renders colors[0] as the hero (left ~2/3) with the
+// rest stacked in a sharp column on the right. onChange emits the
+// option in the shape it was passed (string stays string, array stays array).
+// Without options it falls back to the native color input for back-compat.
+function TweakColor({ label, value, options, onChange }) {
+  if (!options || !options.length) {
+    return (
+      <div className="twk-row twk-row-h">
+        <div className="twk-lbl"><span>{label}</span></div>
+        <input type="color" className="twk-swatch" value={value}
+               onChange={(e) => onChange(e.target.value)} />
+      </div>
+    );
+  }
+  // Native <input type=color> emits lowercase hex per the HTML spec, so
+  // compare case-insensitively. String() guards JSON.stringify(undefined),
+  // which returns the primitive undefined (no .toLowerCase).
+  const key = (o) => String(JSON.stringify(o)).toLowerCase();
+  const cur = key(value);
+  return (
+    <TweakRow label={label}>
+      <div className="twk-chips" role="radiogroup">
+        {options.map((o, i) => {
+          const colors = Array.isArray(o) ? o : [o];
+          const [hero, ...rest] = colors;
+          const sup = rest.slice(0, 4);
+          const on = key(o) === cur;
+          return (
+            <button key={i} type="button" className="twk-chip" role="radio"
+                    aria-checked={on} data-on={on ? '1' : '0'}
+                    aria-label={colors.join(', ')} title={colors.join(' · ')}
+                    style={{ background: hero }}
+                    onClick={() => onChange(o)}>
+              {sup.length > 0 && (
+                <span>
+                  {sup.map((c, j) => <i key={j} style={{ background: c }} />)}
+                </span>
+              )}
+              {on && <__TwkCheck light={__twkIsLight(hero)} />}
+            </button>
+          );
+        })}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+</script>
+<script type="text/babel">
+// MemoryMatch — shared components (windows, chips, icons, header)
+const { useState, useEffect, useRef } = React;
+
+/* ---------- pixel icons (7x7 grid, crisp) ---------- */
+function Px({ px, size = 16, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 7 7" shapeRendering="crispEdges" fill="currentColor" aria-hidden="true" style={{ display: 'inline-block', flex: 'none', ...style }}>
+      {px.map(([x, y], i) => (<rect key={i} x={x} y={y} width="1" height="1"></rect>))}
+    </svg>
+  );
+}
+const HEART_PX = [[1,1],[2,1],[4,1],[5,1],[0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[1,3],[2,3],[3,3],[4,3],[5,3],[2,4],[3,4],[4,4],[3,5]];
+const STAR_PX = [[3,0],[3,1],[2,2],[3,2],[4,2],[0,3],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3],[2,4],[3,4],[4,4],[1,5],[2,5],[4,5],[5,5],[1,6],[5,6]];
+const SPARKLE_PX = [[3,0],[3,1],[2,2],[3,2],[4,2],[0,3],[1,3],[2,3],[3,3],[4,3],[5,3],[6,3],[2,4],[3,4],[4,4],[3,5],[3,6]];
+const DISC_PX = [[2,0],[3,0],[4,0],[1,1],[5,1],[0,2],[3,2],[6,2],[0,3],[2,3],[3,3],[4,3],[6,3],[0,4],[3,4],[6,4],[1,5],[5,5],[2,6],[3,6],[4,6]];
+const WAVE_PX = [[2,0],[4,0],[2,1],[3,1],[4,1],[1,2],[2,2],[3,2],[4,2],[5,2],[1,3],[2,3],[3,3],[4,3],[5,3],[2,4],[3,4],[4,4],[2,5],[3,5],[4,5],[2,6],[4,6]];
+
+function PixelHeart(props) { return <Px px={HEART_PX} {...props} />; }
+function PixelStar(props) { return <Px px={STAR_PX} {...props} />; }
+function PixelSparkle(props) { return <Px px={SPARKLE_PX} {...props} />; }
+function PixelDisc(props) { return <Px px={DISC_PX} {...props} />; }
+function PixelWave(props) { return <Px px={WAVE_PX} {...props} />; }
+
+/* ---------- window module ---------- */
+function WindowDots() {
+  return (
+    <div className="mm-window-dots" aria-hidden="true">
+      <span></span><span></span><span></span>
+    </div>
+  );
+}
+
+function Y2KWindow({ title, icon, soft, flush, children, style, bodyStyle, label }) {
+  return (
+    <section className="mm-window" style={style} data-screen-label={label}>
+      {title !== undefined && (
+        <header className={'mm-titlebar' + (soft ? ' mm-titlebar-soft' : '')}>
+          {icon && <span style={{ display: 'grid', placeItems: 'center' }}>{icon}</span>}
+          <h2 className="mm-titlebar-text">{title}</h2>
+          <WindowDots></WindowDots>
+        </header>
+      )}
+      <div className={'mm-window-body' + (flush ? ' mm-flush' : '')} style={bodyStyle}>{children}</div>
+    </section>
+  );
+}
+
+/* ---------- header ---------- */
+function SiteHeader({ route, go }) {
+  const navLink = (label, r) => (
+    <button
+      onClick={() => go(r)}
+      className="mm-chip"
+      style={{
+        border: 'none',
+        background: route === r ? 'color-mix(in oklch, var(--primary) 14%, transparent)' : 'transparent',
+        color: route === r ? 'var(--primary)' : 'var(--muted)',
+        fontWeight: 600,
+        minHeight: '40px',
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <header
+      style={{
+        position: 'sticky', top: 0, zIndex: 40,
+        background: 'color-mix(in oklch, var(--bg) 82%, transparent)',
+        backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: '1px solid color-mix(in oklch, var(--border) 60%, transparent)',
+      }}
+    >
+      <div style={{ maxWidth: '640px', margin: '0 auto', padding: '12px var(--pad-page)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+        <button onClick={() => go('landing')} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'none', border: 'none', padding: 0, color: 'var(--ink)' }}>
+          <span style={{ display: 'grid', placeItems: 'center', width: '34px', height: '34px', borderRadius: '11px', background: 'var(--primary)', color: 'var(--primary-fg)', boxShadow: 'var(--shadow-soft), inset 0 1px 0 oklch(1 0 0 / 0.35)' }}>
+            <PixelHeart size={16}></PixelHeart>
+          </span>
+          <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '19px', letterSpacing: '-0.01em' }}>MemoryMatch</span>
+        </button>
+        <nav style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+          {navLink('Browse', 'browse')}
+          {navLink('Sign in', 'onboarding')}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+/* ---------- small bits ---------- */
+function Avatar({ src, letter, size = 56, online, radius }) {
+  return (
+    <span className="mm-avatar" style={{ width: size + 'px', height: size + 'px', borderRadius: radius ? radius + 3 : undefined }}>
+      {src
+        ? <img src={src} alt="" style={radius ? { borderRadius: radius + 'px' } : undefined}></img>
+        : <span className="mm-avatar-letter" style={{ fontSize: size * 0.4 + 'px', ...(radius ? { borderRadius: radius + 'px' } : {}) }}>{letter}</span>}
+      {online && <span className="mm-online-dot" aria-label="online"></span>}
+    </span>
+  );
+}
+
+function Eyebrow({ icon, children }) {
+  return <span className="mm-eyebrow">{icon}{children}</span>;
+}
+
+/* toast for prototype feedback (charm sent, copied, etc.) */
+function useToast() {
+  const [toast, setToast] = useState(null);
+  const timer = useRef(null);
+  const show = (msg) => {
+    setToast(msg);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => setToast(null), 2200);
+  };
+  const node = toast ? (
+    <div
+      style={{
+        position: 'fixed', bottom: '28px', left: '50%', transform: 'translateX(-50%)',
+        zIndex: 90, background: 'var(--ink)', color: 'var(--surface)',
+        fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '14.5px',
+        padding: '12px 22px', borderRadius: '999px', boxShadow: 'var(--shadow-soft)',
+        display: 'flex', alignItems: 'center', gap: '9px', whiteSpace: 'nowrap',
+      }}
+    >
+      <PixelSparkle size={14}></PixelSparkle>{toast}
+    </div>
+  ) : null;
+  return [node, show];
+}
+
+Object.assign(window, {
+  PixelHeart, PixelStar, PixelSparkle, PixelDisc, PixelWave,
+  Y2KWindow, WindowDots, SiteHeader, Avatar, Eyebrow, useToast,
+});
+</script>
+<script type="text/babel">
+// MemoryMatch — Landing + Browse screens
+(() => {
+const { useState } = React;
+const D = window.MM_DATA;
+
+/* ============ LANDING ============ */
+function LandingScreen({ go }) {
+  return (
+    <main className="mm-page" data-screen-label="Landing">
+      {/* hero */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 'calc(18px * var(--space))', paddingTop: 'calc(10px * var(--space))' }}>
+        <span className="mm-chip mm-chip-soft" style={{ alignSelf: 'flex-start' }}>
+          <PixelSparkle size={13} style={{ color: 'var(--primary)' }}></PixelSparkle>
+          Soft Launch — low pressure, no swiping
+        </span>
+        <h1 style={{ fontSize: 'clamp(38px, 9vw, 52px)', fontWeight: 700, letterSpacing: '-0.02em' }}>
+          Less swiping.<br></br>
+          <span className="mm-holo-text">More story.</span>
+        </h1>
+        <p className="mm-muted" style={{ fontSize: '17px', maxWidth: '46ch' }}>
+          Find chemistry through the moments that made you. Build a Memory Reel, react to the moments you love, and let ReelChemistry do the rest.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--gap-sm)' }}>
+          <button className="mm-btn mm-btn-primary" onClick={() => go('onboarding')}>
+            <PixelHeart size={15}></PixelHeart> Make your Vibe Page
+          </button>
+          <button className="mm-btn mm-btn-ghost" onClick={() => go('browse')}>Take a peek around</button>
+        </div>
+        <p className="mm-muted" style={{ fontSize: '13px' }}>18+ only. No public like counts, ever.</p>
+      </section>
+
+      {/* reel showcase window */}
+      <Y2KWindow title="memory-reel.exe" icon={<PixelDisc size={14}></PixelDisc>} flush>
+        <div style={{ position: 'relative' }}>
+          <img src="mm/reels/bedroom-setup.png" alt="A cozy Y2K bedroom desk setup from a Memory Reel" style={{ width: '100%', aspectRatio: '4 / 3.4', objectFit: 'cover' }}></img>
+          <div style={{ position: 'absolute', insetInline: 0, bottom: 0, padding: 'calc(18px * var(--space))', background: 'linear-gradient(to top, oklch(0.25 0.05 318 / 0.75), transparent)' }}>
+            <p style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '16px', color: 'oklch(0.97 0.02 86)' }}>where i make all my mixtapes</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: 'calc(14px * var(--space)) calc(18px * var(--space))' }}>
+          <span className="mm-mono mm-muted" style={{ fontSize: '12.5px' }}>4 frames · lo-fi beat</span>
+          <span className="mm-chip mm-chip-soft" style={{ minHeight: '34px', fontSize: '13px' }}>
+            <PixelHeart size={12} style={{ color: 'var(--primary)' }}></PixelHeart> charm sent
+          </span>
+        </div>
+      </Y2KWindow>
+
+      {/* how it works */}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap)' }}>
+        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <h2 style={{ fontSize: '28px', fontWeight: 700 }}>How it works</h2>
+          <p className="mm-muted">Three gentle steps. No swiping required.</p>
+        </div>
+        {[
+          { n: '01', icon: <PixelDisc size={16}></PixelDisc>, t: 'Build your reel', d: 'Stitch a few moments into a Memory Reel — captions, a beat, your story.' },
+          { n: '02', icon: <PixelWave size={16}></PixelWave>, t: 'React to moments', d: 'Send a charm or a note about a specific frame. Low stakes, real things.' },
+          { n: '03', icon: <PixelHeart size={16}></PixelHeart>, t: 'ReelChemistry', d: 'When the feeling is mutual, we hand you conversation starters that actually fit.' },
+        ].map((s) => (
+          <Y2KWindow key={s.n} title={'step-' + s.n + '.exe'} soft icon={s.icon}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <h3 style={{ fontSize: '19px', fontWeight: 600 }}>{s.t}</h3>
+              <p className="mm-muted" style={{ fontSize: '15px' }}>{s.d}</p>
+            </div>
+          </Y2KWindow>
+        ))}
+      </section>
+
+      {/* who it's for */}
+      <Y2KWindow title="who-its-for.txt" icon={<PixelStar size={14}></PixelStar>}>
+        <p className="mm-muted" style={{ fontSize: '15px' }}>
+          For shy daters, creative people, and anyone who shows up best through context — your taste, your humor, your moments — not a single static photo.
+        </p>
+        <div className="mm-chip-row">
+          {['slow burn', 'friend first', 'open to dating', 'just browsing', 'co-op mode'].map((c) => (
+            <span key={c} className="mm-chip">{c}</span>
+          ))}
+        </div>
+      </Y2KWindow>
+
+      {/* footer */}
+      <footer style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '10px', paddingTop: 'calc(6px * var(--space))' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '18px', fontSize: '13.5px' }}>
+          <span className="mm-muted">Guidelines</span>
+          <span className="mm-muted">Privacy</span>
+          <span className="mm-muted">Terms</span>
+        </div>
+        <p className="mm-mono mm-muted" style={{ fontSize: '12px' }}>est. 2026 · made with charms, not swipes</p>
+      </footer>
+    </main>
+  );
+}
+
+/* ============ BROWSE ============ */
+function BrowseScreen({ go, toast }) {
+  const [filter, setFilter] = useState('everyone');
+  const [query, setQuery] = useState('');
+  const filters = ['everyone', 'slow burn', 'friend first', 'open to dating', 'just browsing', 'co-op mode'];
+
+  const match = (b) =>
+    (filter === 'everyone' || b.intent === filter) &&
+    (query.trim() === '' || (b.displayName + b.username + b.mood).toLowerCase().includes(query.trim().toLowerCase()));
+
+  const online = D.buddies.filter((b) => b.online && match(b));
+  const away = D.buddies.filter((b) => !b.online && match(b));
+
+  const BuddyRow = ({ b }) => (
+    <div
+      style={{
+        display: 'flex', alignItems: 'center', gap: 'var(--gap)',
+        background: 'var(--surface-2)', border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-card)', padding: 'calc(13px * var(--space)) calc(15px * var(--space))',
+        boxShadow: 'inset 0 1px 0 oklch(1 0 0 / 0.45)',
+      }}
+    >
+      <button onClick={() => go('vibe')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} aria-label={'Open ' + b.displayName + "'s vibe page"}>
+        <Avatar src={b.thumb} size={54} online={b.online}></Avatar>
+      </button>
+      <button onClick={() => go('vibe')} style={{ flex: 1, minWidth: 0, background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '3px', color: 'var(--ink)' }}>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: '7px', minWidth: 0 }}>
+          <strong style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '16.5px' }}>{b.displayName}</strong>
+          <span className="mm-mono mm-muted" style={{ fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>@{b.username}</span>
+        </span>
+        <span className="mm-muted" style={{ fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.mood}</span>
+        <span className="mm-mono" style={{ fontSize: '11px', color: 'var(--primary)', letterSpacing: '0.05em' }}>{b.intent}</span>
+      </button>
+      <button className="mm-btn mm-btn-ghost mm-btn-sm" onClick={() => toast('Charm sent to ' + b.displayName + ' ✦')}>
+        <PixelHeart size={13} style={{ color: 'var(--primary)' }}></PixelHeart> Charm
+      </button>
+    </div>
+  );
+
+  return (
+    <main className="mm-page" data-screen-label="Browse">
+      <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <h1 style={{ fontSize: '34px', fontWeight: 700, letterSpacing: '-0.01em' }}>Buddy list</h1>
+        <p className="mm-muted" style={{ fontSize: '15.5px', maxWidth: '52ch' }}>
+          People whose vibes might match yours. Peek at a reel, send a charm, no rush. We don't show like counts or rankings here.
+        </p>
+      </section>
+
+      <Y2KWindow title="whos-around.exe" icon={<PixelWave size={14}></PixelWave>}>
+        <input
+          className="mm-input"
+          placeholder="search names or moods…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search names or moods"
+        ></input>
+        <div className="mm-chip-row">
+          {filters.map((f) => (
+            <button key={f} className={'mm-chip' + (filter === f ? ' mm-chip-on' : '')} onClick={() => setFilter(f)}>{f}</button>
+          ))}
+        </div>
+
+        {online.length > 0 && (
+          <p className="mm-mono" style={{ fontSize: '12px', letterSpacing: '0.08em', color: 'var(--online)', marginTop: '4px' }}>● ONLINE — {online.length}</p>
+        )}
+        {online.map((b) => (<BuddyRow key={b.username} b={b}></BuddyRow>))}
+
+        {away.length > 0 && (
+          <p className="mm-mono mm-muted" style={{ fontSize: '12px', letterSpacing: '0.08em', marginTop: 'calc(8px * var(--space))' }}>○ AWAY — {away.length}</p>
+        )}
+        {away.map((b) => (<BuddyRow key={b.username} b={b}></BuddyRow>))}
+
+        {online.length + away.length === 0 && (
+          <p className="mm-muted" style={{ textAlign: 'center', padding: '20px 0' }}>nobody around with that vibe — try another filter ✦</p>
+        )}
+      </Y2KWindow>
+    </main>
+  );
+}
+
+Object.assign(window, { LandingScreen, BrowseScreen });
+})();
+</script>
+<script type="text/babel">
+// MemoryMatch — Vibe Page + ReelChemistry screens
+(() => {
+const { useState, useEffect, useRef } = React;
+const D = window.MM_DATA;
+
+/* ---------- reel player (auto-advance slideshow w/ progress segments) ---------- */
+function ReelPlayer({ frames, beatLabel, aspect = '4 / 3.6' }) {
+  const [idx, setIdx] = useState(0);
+  const [playing, setPlaying] = useState(true);
+  const [muted, setMuted] = useState(true);
+
+  useEffect(() => {
+    if (!playing) return;
+    const t = setTimeout(() => setIdx((i) => (i + 1) % frames.length), (frames[idx].duration || 4) * 1000);
+    return () => clearTimeout(t);
+  }, [idx, playing, frames]);
+
+  const frame = frames[idx];
+
+  return (
+    <div>
+      <div style={{ position: 'relative', overflow: 'hidden' }}>
+        <img key={frame.src} src={frame.src} alt={frame.caption} style={{ width: '100%', aspectRatio: aspect, objectFit: 'cover', animation: 'mmFade 0.5s ease' }}></img>
+        {/* progress segments */}
+        <div style={{ position: 'absolute', top: '12px', left: '14px', right: '14px', display: 'flex', gap: '6px' }}>
+          {frames.map((f, i) => (
+            <span key={i} style={{ flex: 1, height: '5px', borderRadius: '99px', background: i <= idx ? 'oklch(0.97 0.02 86 / 0.95)' : 'oklch(0.97 0.02 86 / 0.35)', transition: 'background 0.3s ease' }}></span>
+          ))}
+        </div>
+        <span className="mm-mono" style={{ position: 'absolute', top: '24px', right: '14px', fontSize: '11.5px', color: 'oklch(0.97 0.02 86)', background: 'oklch(0.25 0.05 318 / 0.55)', padding: '3px 9px', borderRadius: '99px' }}>
+          {idx + 1}/{frames.length}
+        </span>
+        {frame.caption && (
+          <div style={{ position: 'absolute', insetInline: 0, bottom: 0, padding: 'calc(16px * var(--space))', background: 'linear-gradient(to top, oklch(0.25 0.05 318 / 0.75), transparent)' }}>
+            <p style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '16px', color: 'oklch(0.97 0.02 86)' }}>{frame.caption}</p>
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', padding: 'calc(13px * var(--space)) calc(16px * var(--space))' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="mm-icon-btn" style={{ width: '40px', height: '40px' }} aria-label="Previous frame" onClick={() => setIdx((i) => (i - 1 + frames.length) % frames.length)}>‹</button>
+          <button className="mm-icon-btn" style={{ width: '40px', height: '40px', background: 'var(--primary)', color: 'var(--primary-fg)', borderColor: 'var(--primary)' }} aria-label={playing ? 'Pause reel' : 'Play reel'} onClick={() => setPlaying(!playing)}>
+            {playing ? '❚❚' : '▶'}
+          </button>
+          <button className="mm-icon-btn" style={{ width: '40px', height: '40px' }} aria-label="Next frame" onClick={() => setIdx((i) => (i + 1) % frames.length)}>›</button>
+        </div>
+        <button className="mm-chip" onClick={() => setMuted(!muted)} aria-pressed={!muted}>
+          <PixelDisc size={13} style={{ color: 'var(--primary)' }}></PixelDisc>
+          {muted ? '🔇 ' : '🔊 '}{beatLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ============ VIBE PAGE ============ */
+function VibeScreen({ go, toast }) {
+  const R = D.robin;
+  const [liked, setLiked] = useState(false);
+
+  return (
+    <main className="mm-page" data-screen-label="Vibe Page">
+      {/* identity */}
+      <Y2KWindow title={R.username + '.vibe'} icon={<PixelHeart size={14}></PixelHeart>}>
+        <div style={{ display: 'flex', gap: 'var(--gap)', alignItems: 'flex-start' }}>
+          <Avatar letter="R" size={74} online={R.online}></Avatar>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <h1 style={{ fontSize: '27px', fontWeight: 700 }}>{R.displayName}</h1>
+            <p className="mm-mono mm-muted" style={{ fontSize: '12.5px' }}>@{R.username} · {R.pronouns} · {R.age} · {R.location}</p>
+          </div>
+        </div>
+        <div className="mm-chip mm-chip-soft" style={{ alignSelf: 'flex-start' }}>
+          <PixelStar size={13} style={{ color: 'var(--primary)' }}></PixelStar>
+          <span className="mm-mono" style={{ fontSize: '13px' }}>mood: {R.mood}</span>
+        </div>
+        <div className="mm-chip-row">
+          {R.intents.map((i) => (<span key={i} className="mm-chip">{i}</span>))}
+        </div>
+      </Y2KWindow>
+
+      {/* reel */}
+      <Y2KWindow title="memory-reel.exe" icon={<PixelDisc size={14}></PixelDisc>} flush>
+        <ReelPlayer frames={R.frames} beatLabel={R.beatLabel}></ReelPlayer>
+      </Y2KWindow>
+
+      {/* say hi */}
+      <Y2KWindow title="say-hi.exe" soft icon={<PixelWave size={14}></PixelWave>}>
+        <p className="mm-muted" style={{ fontSize: '14.5px' }}>
+          No swiping here. Send a charm or quietly like their page — if it's mutual, you'll both find out together.
+        </p>
+        <button className="mm-btn mm-btn-primary" onClick={() => go('chemistry')}>
+          <PixelHeart size={15}></PixelHeart> Send a charm
+        </button>
+        <button className="mm-btn mm-btn-ghost" onClick={() => { setLiked(!liked); toast(liked ? 'Like removed' : 'Liked privately ✦'); }}>
+          {liked ? '♥ Liked privately' : '♡ Like privately'}
+        </button>
+        <p className="mm-muted" style={{ fontSize: '12.5px', textAlign: 'center' }}>Likes are always private. No counts, no leaderboards.</p>
+      </Y2KWindow>
+
+      {/* about */}
+      <Y2KWindow title="a-little-about-me.txt" icon={<PixelStar size={14}></PixelStar>}>
+        <p style={{ fontSize: '15.5px' }}>{R.blurb}</p>
+        {R.prompts.map((p) => (
+          <div key={p.q} style={{ background: 'color-mix(in oklch, var(--secondary) 35%, var(--surface-2))', border: '1px solid color-mix(in oklch, var(--secondary) 55%, var(--border))', borderRadius: 'var(--radius-card)', padding: 'calc(15px * var(--space)) calc(17px * var(--space))', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            <p style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '14.5px' }}>{p.q}</p>
+            <p className="mm-muted" style={{ fontSize: '15px' }}>{p.a}</p>
+          </div>
+        ))}
+      </Y2KWindow>
+
+      {/* now playing */}
+      <Y2KWindow title="now-playing.m3u" soft icon={<PixelDisc size={14}></PixelDisc>}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--gap)' }}>
+          <span style={{ display: 'grid', placeItems: 'center', width: '46px', height: '46px', borderRadius: '14px', background: 'var(--holo)', color: 'var(--ink)', flex: 'none' }}>
+            <PixelDisc size={18}></PixelDisc>
+          </span>
+          <div style={{ minWidth: 0 }}>
+            <p style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '15.5px' }}>{R.nowPlaying}</p>
+            <p className="mm-mono mm-muted" style={{ fontSize: '12px' }}>on repeat lately</p>
+          </div>
+        </div>
+      </Y2KWindow>
+
+      {/* into lately */}
+      <Y2KWindow title="into-lately.cfg" icon={<PixelSparkle size={14}></PixelSparkle>}>
+        <div className="mm-chip-row">
+          {R.interests.map((it, i) => (
+            <span key={it} className="mm-chip">
+              <span className="mm-mono" style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 700 }}>{i + 1}</span>
+              {it}
+            </span>
+          ))}
+        </div>
+      </Y2KWindow>
+
+      {/* top 8 */}
+      <Y2KWindow title="top-8.exe" icon={<PixelHeart size={14}></PixelHeart>}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gap)' }}>
+          {R.top8.map((f) => (
+            <button key={f.username} onClick={() => go('browse')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', color: 'var(--ink)' }}>
+              <Avatar src={f.thumb} size={58}></Avatar>
+              <span style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: '13px' }}>{f.displayName}</span>
+            </button>
+          ))}
+        </div>
+      </Y2KWindow>
+    </main>
+  );
+}
+
+/* ============ REELCHEMISTRY ============ */
+function ChemistryScreen({ go, toast }) {
+  const M = D.mira;
+  const [picked, setPicked] = useState(null);
+  const [message, setMessage] = useState('');
+
+  return (
+    <main className="mm-page" data-screen-label="ReelChemistry">
+      <section style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', paddingTop: 'calc(8px * var(--space))' }}>
+        <Eyebrow icon={<PixelHeart size={13}></PixelHeart>}>REELCHEMISTRY UNLOCKED</Eyebrow>
+        <h1 style={{ fontSize: '34px', fontWeight: 700, letterSpacing: '-0.01em' }}>You and {M.displayName} <span className="mm-holo-text">both felt it</span></h1>
+        <p className="mm-muted" style={{ fontSize: '15.5px', maxWidth: '46ch' }}>
+          No rush, no pressure. You liked each other's reels — say hi whenever you feel like it, or just enjoy knowing the vibe was mutual.
+        </p>
+      </section>
+
+      <Y2KWindow title="your-reels-clicked.exe" icon={<PixelSparkle size={14}></PixelSparkle>}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 'calc(18px * var(--space))', padding: 'calc(6px * var(--space)) 0' }}>
+          {[{ src: 'mm/reels/cafe-window.png', who: 'You' }, { src: M.thumb, who: M.displayName }].map((s, i) => (
+            <React.Fragment key={s.who}>
+              {i === 1 && <PixelHeart size={22} style={{ color: 'var(--primary)' }}></PixelHeart>}
+              <figure style={{ margin: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '9px' }}>
+                <Avatar src={s.src} size={108} radius={18}></Avatar>
+                <figcaption style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '14.5px' }}>{s.who}</figcaption>
+              </figure>
+            </React.Fragment>
+          ))}
+        </div>
+        <p className="mm-muted" style={{ textAlign: 'center', fontSize: '14px' }}>
+          {M.displayName} is feeling: <strong style={{ color: 'var(--ink)' }}>{M.mood}</strong>
+        </p>
+      </Y2KWindow>
+
+      <Y2KWindow title="what-you-have-in-common.cfg" icon={<PixelStar size={14}></PixelStar>}>
+        <div className="mm-chip-row">
+          {M.shared.map((s) => (
+            <span key={s} className="mm-chip mm-chip-soft">
+              <PixelSparkle size={12} style={{ color: 'var(--primary)' }}></PixelSparkle>{s}
+            </span>
+          ))}
+        </div>
+      </Y2KWindow>
+
+      <Y2KWindow title="break-the-ice.exe" icon={<PixelWave size={14}></PixelWave>}>
+        <p className="mm-muted" style={{ fontSize: '14.5px' }}>
+          Stuck on a first message? Tap a starter to drop it in — then make it your own.
+        </p>
+        {M.starters.map((s, i) => (
+          <button
+            key={i}
+            onClick={() => { setPicked(i); setMessage(s); }}
+            style={{
+              textAlign: 'left', fontSize: '15px', lineHeight: 1.5, color: 'var(--ink)', cursor: 'pointer',
+              background: picked === i ? 'color-mix(in oklch, var(--primary) 12%, var(--surface-2))' : 'var(--surface-2)',
+              border: '1.5px solid ' + (picked === i ? 'var(--primary)' : 'var(--border)'),
+              borderRadius: 'var(--radius-card)', padding: 'calc(15px * var(--space)) calc(17px * var(--space))',
+              transition: 'border-color 0.15s ease, background 0.15s ease',
+            }}
+          >
+            {s}
+          </button>
+        ))}
+        <textarea
+          className="mm-textarea"
+          placeholder={'write something to ' + M.displayName + '…'}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          aria-label={'Message to ' + M.displayName}
+        ></textarea>
+        <button className="mm-btn mm-btn-primary" onClick={() => { if (message.trim()) { toast('Starter sent to ' + M.displayName + ' ✦'); setMessage(''); setPicked(null); } else { toast('Pick a starter or write a note first'); } }}>
+          <PixelWave size={15}></PixelWave> Send a starter
+        </button>
+        <p className="mm-muted" style={{ fontSize: '12.5px', textAlign: 'center' }}>You can also just sit with the good feeling. That's allowed.</p>
+      </Y2KWindow>
+
+      <button className="mm-btn mm-btn-ghost" onClick={() => go('browse')} style={{ alignSelf: 'center' }}>← Back to the buddy list</button>
+    </main>
+  );
+}
+
+Object.assign(window, { ReelPlayer, VibeScreen, ChemistryScreen });
+})();
+</script>
+<script type="text/babel">
+// MemoryMatch — Onboarding wizard + Reel builder
+(() => {
+const { useState } = React;
+const D = window.MM_DATA;
+
+/* ============ ONBOARDING ============ */
+function OnboardingScreen({ go, toast, theme, setTheme }) {
+  const [step, setStep] = useState(0);
+  const [username, setUsername] = useState('mixtape_kid');
+  const [display, setDisplay] = useState('Robin');
+  const [vibes, setVibes] = useState(['slow-burn']);
+  const [softLaunch, setSoftLaunch] = useState(true);
+  const [bio, setBio] = useState('');
+  const [moodTxt, setMoodTxt] = useState('brb, building a reel ✦');
+  const [top8, setTop8] = useState(['lo-fi beats', 'pixel art']);
+  const [search, setSearch] = useState('');
+
+  const steps = ['Your name', 'Your vibe', 'Your look', 'Your top 8'];
+  const canNext = step === 0 ? username.trim() && display.trim() : true;
+
+  const toggleVibe = (id) => setVibes((v) => v.includes(id) ? v.filter((x) => x !== id) : [...v, id]);
+  const addInterest = (it) => setTop8((t) => t.includes(it) || t.length >= 8 ? t : [...t, it]);
+  const removeInterest = (it) => setTop8((t) => t.filter((x) => x !== it));
+  const moveInterest = (i, dir) => setTop8((t) => {
+    const j = i + dir;
+    if (j < 0 || j >= t.length) return t;
+    const n = [...t]; [n[i], n[j]] = [n[j], n[i]]; return n;
+  });
+
+  const suggestions = D.interests.filter((it) => !top8.includes(it) && it.includes(search.trim().toLowerCase()));
+
+  return (
+    <main className="mm-page" data-screen-label="Onboarding">
+      {/* progress */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <p className="mm-mono mm-muted" style={{ fontSize: '12.5px', letterSpacing: '0.05em' }}>STEP {step + 1} OF 4 · {steps[step].toUpperCase()}</p>
+          <p className="mm-mono" style={{ fontSize: '13px', color: 'var(--primary)', fontWeight: 700 }}>{(step + 1) * 25}%</p>
+        </div>
+        <div style={{ display: 'flex', gap: '7px' }}>
+          {steps.map((s, i) => (
+            <div key={s} className="mm-progress-track">
+              <div className="mm-progress-fill" style={{ width: i <= step ? '100%' : '0%' }}></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <Y2KWindow title="setup-wizard.exe" icon={<PixelSparkle size={14}></PixelSparkle>}>
+        {step === 0 && (<>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Let's claim your corner</h1>
+            <p className="mm-muted" style={{ fontSize: '14.5px', marginTop: '6px' }}>No pressure — you can change all of this later.</p>
+          </div>
+          <div>
+            <label className="mm-label" htmlFor="ob-username">Username</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className="mm-mono" style={{ fontSize: '17px', color: 'var(--muted)' }}>@</span>
+              <input id="ob-username" className="mm-input" value={username} onChange={(e) => setUsername(e.target.value)}></input>
+            </div>
+            <p className="mm-hint">Lowercase letters, numbers, underscores.</p>
+          </div>
+          <div>
+            <label className="mm-label" htmlFor="ob-display">Display name</label>
+            <input id="ob-display" className="mm-input" value={display} onChange={(e) => setDisplay(e.target.value)}></input>
+            <p className="mm-hint">What people see on your Vibe Page.</p>
+          </div>
+        </>)}
+
+        {step === 1 && (<>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 700 }}>What are you here for?</h1>
+            <p className="mm-muted" style={{ fontSize: '14.5px', marginTop: '6px' }}>Pick as many as feel true. This just helps set the tone.</p>
+          </div>
+          <div className="mm-chip-row">
+            {D.intents.map((i) => (
+              <button key={i.id} className={'mm-chip' + (vibes.includes(i.id) ? ' mm-chip-on' : '')} onClick={() => toggleVibe(i.id)} aria-pressed={vibes.includes(i.id)}>{i.label}</button>
+            ))}
+          </div>
+          <div style={{ background: 'color-mix(in oklch, var(--secondary) 30%, var(--surface-2))', border: '1px solid color-mix(in oklch, var(--secondary) 50%, var(--border))', borderRadius: 'var(--radius-card)', padding: 'calc(16px * var(--space))', display: 'flex', gap: 'var(--gap)', alignItems: 'flex-start' }}>
+            <button
+              role="switch"
+              aria-checked={softLaunch}
+              onClick={() => setSoftLaunch(!softLaunch)}
+              style={{
+                flex: 'none', width: '52px', height: '30px', borderRadius: '99px', border: 'none', position: 'relative',
+                background: softLaunch ? 'var(--primary)' : 'var(--border)', transition: 'background 0.2s ease', marginTop: '2px',
+              }}
+            >
+              <span style={{ position: 'absolute', top: '3px', left: softLaunch ? '25px' : '3px', width: '24px', height: '24px', borderRadius: '50%', background: 'oklch(0.98 0.01 86)', boxShadow: '0 1px 3px oklch(0 0 0 / 0.25)', transition: 'left 0.2s ease' }}></span>
+            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <p style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '15px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <PixelStar size={13} style={{ color: 'var(--primary)' }}></PixelStar>
+                Soft Launch Mode
+                <span className="mm-mono" style={{ fontSize: '10.5px', background: 'var(--holo)', color: 'var(--ink)', padding: '2px 9px', borderRadius: '99px', fontWeight: 700 }}>recommended</span>
+              </p>
+              <p className="mm-muted" style={{ fontSize: '13.5px' }}>Softer, lower-pressure interactions. No like counts, gentler prompts, and a calmer pace.</p>
+            </div>
+          </div>
+        </>)}
+
+        {step === 2 && (<>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Pick your look</h1>
+            <p className="mm-muted" style={{ fontSize: '14.5px', marginTop: '6px' }}>Choose a theme — your whole Vibe Page recolors to match. Try one, it's live.</p>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-sm)' }}>
+            {D.themes.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => setTheme(t.id)}
+                aria-pressed={theme === t.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 'var(--gap)', textAlign: 'left', cursor: 'pointer',
+                  background: theme === t.id ? 'color-mix(in oklch, var(--primary) 10%, var(--surface-2))' : 'var(--surface-2)',
+                  border: '1.5px solid ' + (theme === t.id ? 'var(--primary)' : 'var(--border)'),
+                  borderRadius: 'var(--radius-card)', padding: 'calc(13px * var(--space)) calc(15px * var(--space))',
+                  transition: 'border-color 0.15s ease, background 0.15s ease', color: 'var(--ink)',
+                }}
+              >
+                <span style={{ display: 'flex', flex: 'none', borderRadius: '99px', overflow: 'hidden', boxShadow: 'var(--shadow-soft)' }}>
+                  {t.swatch.map((c) => (<span key={c} style={{ width: '20px', height: '28px', background: c }}></span>))}
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '15.5px' }}>{t.name}</span>
+                  <span className="mm-muted" style={{ display: 'block', fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.blurb}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+          <div>
+            <label className="mm-label" htmlFor="ob-bio">Short bio</label>
+            <textarea id="ob-bio" className="mm-textarea" maxLength={160} placeholder="collector of small moments + lo-fi loops" value={bio} onChange={(e) => setBio(e.target.value)}></textarea>
+            <p className="mm-hint" style={{ textAlign: 'right' }}>{bio.length}/160</p>
+          </div>
+          <div>
+            <label className="mm-label" htmlFor="ob-mood">Mood status</label>
+            <input id="ob-mood" className="mm-input mm-mono" style={{ fontSize: '14.5px' }} value={moodTxt} onChange={(e) => setMoodTxt(e.target.value)}></input>
+            <p className="mm-hint">AIM-style away message. Set the mood.</p>
+          </div>
+        </>)}
+
+        {step === 3 && (<>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: 700 }}>Your Top 8 interests</h1>
+            <p className="mm-muted" style={{ fontSize: '14.5px', marginTop: '6px' }}>Pick up to 8 and rank them. These power your matches.</p>
+          </div>
+          {top8.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--gap-sm)' }}>
+              {top8.map((it, i) => (
+                <div key={it} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-card)', padding: '9px 12px 9px 14px' }}>
+                  <span style={{ display: 'grid', placeItems: 'center', flex: 'none', width: '28px', height: '28px', borderRadius: '50%', background: 'var(--holo)', color: 'var(--ink)', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: '13.5px' }}>{i + 1}</span>
+                  <span style={{ flex: 1, fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: '15px' }}>{it}</span>
+                  <button className="mm-icon-btn" style={{ width: '34px', height: '34px' }} aria-label={'Move ' + it + ' up'} onClick={() => moveInterest(i, -1)}>↑</button>
+                  <button className="mm-icon-btn" style={{ width: '34px', height: '34px' }} aria-label={'Move ' + it + ' down'} onClick={() => moveInterest(i, 1)}>↓</button>
+                  <button className="mm-icon-btn" style={{ width: '34px', height: '34px' }} aria-label={'Remove ' + it} onClick={() => removeInterest(it)}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="mm-mono mm-muted" style={{ fontSize: '12px' }}>{top8.length}/8 chosen · use the arrows to rank</p>
+          <input className="mm-input" placeholder="search or add your own…" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Search interests"></input>
+          <div className="mm-chip-row">
+            {suggestions.slice(0, 14).map((it) => (
+              <button key={it} className="mm-chip" onClick={() => addInterest(it)} disabled={top8.length >= 8} style={top8.length >= 8 ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>+ {it}</button>
+            ))}
+          </div>
+        </>)}
+      </Y2KWindow>
+
+      {/* nav */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button className="mm-btn mm-btn-ghost" style={{ visibility: step === 0 ? 'hidden' : 'visible' }} onClick={() => setStep(step - 1)}>← Back</button>
+        {step < 3 ? (
+          <button className="mm-btn mm-btn-primary" disabled={!canNext} style={!canNext ? { opacity: 0.5, cursor: 'not-allowed' } : undefined} onClick={() => canNext && setStep(step + 1)}>Continue →</button>
+        ) : (
+          <button className="mm-btn mm-btn-primary" onClick={() => { toast('Vibe Page created ✦ welcome in'); go('reel'); }}>
+            <PixelHeart size={15}></PixelHeart> Finish setup
+          </button>
+        )}
+      </div>
+    </main>
+  );
+}
+
+/* ============ REEL BUILDER ============ */
+function ReelBuilderScreen({ go, toast }) {
+  const [frames, setFrames] = useState([
+    { src: 'mm/reels/sunset-drive.png', caption: 'golden hour drives', duration: 4 },
+    { src: 'mm/reels/polaroid-pile.png', caption: '', duration: 4 },
+  ]);
+  const [sel, setSel] = useState(0);
+  const [beat, setBeat] = useState('lofi-tape');
+
+  const update = (i, patch) => setFrames((f) => f.map((fr, j) => (j === i ? { ...fr, ...patch } : fr)));
+  const move = (i, dir) => setFrames((f) => {
+    const j = i + dir;
+    if (j < 0 || j >= f.length) return f;
+    const n = [...f]; [n[i], n[j]] = [n[j], n[i]];
+    setSel(j);
+    return n;
+  });
+  const remove = (i) => setFrames((f) => { const n = f.filter((_, j) => j !== i); setSel(Math.max(0, Math.min(sel, n.length - 1))); return n; });
+  const add = (clip) => setFrames((f) => { setSel(f.length); return [...f, { src: clip.src, caption: '', duration: 4 }]; });
+
+  const total = frames.reduce((s, f) => s + f.duration, 0);
+  const selFrame = frames[sel];
+  const beatObj = D.beats.find((b) => b.id === beat);
+
+  return (
+    <main className="mm-page" data-screen-label="Reel Builder">
+      <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: 700, letterSpacing: '-0.01em' }}>Build your memory reel</h1>
+        <p className="mm-muted" style={{ fontSize: '15.5px', maxWidth: '54ch' }}>
+          Stitch a few moments together, pick a beat, and tell a tiny story. No pressure to be perfect — messy and honest reads best.
+        </p>
+      </section>
+
+      {/* live preview */}
+      {frames.length > 0 && (
+        <Y2KWindow title="live-preview.exe" icon={<PixelDisc size={14}></PixelDisc>} flush>
+          <ReelPlayer key={frames.map((f) => f.src + f.caption + f.duration).join('|')} frames={frames} beatLabel={beatObj.title}></ReelPlayer>
+        </Y2KWindow>
+      )}
+
+      {/* frames */}
+      <Y2KWindow title={'frames · ' + frames.length} icon={<PixelSparkle size={14}></PixelSparkle>}>
+        {frames.map((f, i) => (
+          <div
+            key={f.src + i}
+            onClick={() => setSel(i)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 'var(--gap)', cursor: 'pointer',
+              background: sel === i ? 'color-mix(in oklch, var(--primary) 10%, var(--surface-2))' : 'var(--surface-2)',
+              border: '1.5px solid ' + (sel === i ? 'var(--primary)' : 'var(--border)'),
+              borderRadius: 'var(--radius-card)', padding: 'calc(11px * var(--space)) calc(13px * var(--space))',
+              transition: 'border-color 0.15s ease, background 0.15s ease',
+            }}
+          >
+            <span style={{ position: 'relative', flex: 'none' }}>
+              <img src={f.src} alt="" style={{ width: '58px', height: '58px', objectFit: 'cover', borderRadius: '14px' }}></img>
+              <span className="mm-mono" style={{ position: 'absolute', top: '-6px', left: '-6px', display: 'grid', placeItems: 'center', width: '22px', height: '22px', borderRadius: '8px', background: 'var(--primary)', color: 'var(--primary-fg)', fontSize: '11px', fontWeight: 700 }}>{i + 1}</span>
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '15px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: f.caption ? 'var(--ink)' : 'var(--muted)' }}>
+                {f.caption || 'no caption yet'}
+              </p>
+              <p className="mm-mono mm-muted" style={{ fontSize: '12px' }}>{f.duration}s</p>
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="mm-icon-btn" style={{ width: '36px', height: '36px' }} aria-label="Move frame up" onClick={(e) => { e.stopPropagation(); move(i, -1); }}>↑</button>
+              <button className="mm-icon-btn" style={{ width: '36px', height: '36px' }} aria-label="Move frame down" onClick={(e) => { e.stopPropagation(); move(i, 1); }}>↓</button>
+              <button className="mm-icon-btn" style={{ width: '36px', height: '36px' }} aria-label="Delete frame" onClick={(e) => { e.stopPropagation(); remove(i); }}>✕</button>
+            </div>
+          </div>
+        ))}
+        <p className="mm-mono mm-muted" style={{ fontSize: '12px' }}>total reel length: {total}s</p>
+      </Y2KWindow>
+
+      {/* frame details */}
+      {selFrame && (
+        <Y2KWindow title={'frame-' + (sel + 1) + '-details.cfg'} soft icon={<PixelStar size={14}></PixelStar>}>
+          <div>
+            <label className="mm-label" htmlFor="rb-caption">Caption</label>
+            <input id="rb-caption" className="mm-input" placeholder="say something about this moment…" value={selFrame.caption} onChange={(e) => update(sel, { caption: e.target.value })}></input>
+          </div>
+          <div>
+            <label className="mm-label" htmlFor="rb-duration" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Duration</span>
+              <span className="mm-mono" style={{ color: 'var(--primary)' }}>{selFrame.duration}s</span>
+            </label>
+            <input id="rb-duration" type="range" min="1" max="6" step="1" value={selFrame.duration} onChange={(e) => update(sel, { duration: +e.target.value })} style={{ width: '100%', accentColor: 'var(--primary)' }}></input>
+          </div>
+        </Y2KWindow>
+      )}
+
+      {/* clips */}
+      <Y2KWindow title="add-from-your-clips" icon={<PixelSparkle size={14}></PixelSparkle>}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gap-sm)' }}>
+          {D.clips.map((c) => (
+            <button key={c.src} onClick={() => add(c)} aria-label={'Add ' + c.label} style={{ position: 'relative', background: 'none', border: 'none', padding: 0, cursor: 'pointer', borderRadius: '16px', overflow: 'hidden', boxShadow: 'var(--shadow-soft)' }}>
+              <img src={c.src} alt={c.label} style={{ width: '100%', aspectRatio: '1', objectFit: 'cover', transition: 'transform 0.2s ease' }}></img>
+              <span style={{ position: 'absolute', right: '7px', bottom: '7px', display: 'grid', placeItems: 'center', width: '26px', height: '26px', borderRadius: '9px', background: 'var(--primary)', color: 'var(--primary-fg)', fontWeight: 700, fontSize: '15px' }}>+</span>
+            </button>
+          ))}
+        </div>
+      </Y2KWindow>
+
+      {/* beat */}
+      <Y2KWindow title="background-beat.m3u" icon={<PixelDisc size={14}></PixelDisc>}>
+        <p className="mm-muted" style={{ fontSize: '13.5px' }}>Hand-made loops. Audio stays muted until someone taps play — it never autoplays.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gap-sm)' }}>
+          {D.beats.map((b) => (
+            <button
+              key={b.id}
+              onClick={() => setBeat(b.id)}
+              aria-pressed={beat === b.id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '11px', textAlign: 'left', cursor: 'pointer',
+                background: beat === b.id ? 'color-mix(in oklch, var(--primary) 10%, var(--surface-2))' : 'var(--surface-2)',
+                border: '1.5px solid ' + (beat === b.id ? 'var(--primary)' : 'var(--border)'),
+                borderRadius: 'var(--radius-card)', padding: 'calc(12px * var(--space))', color: 'var(--ink)',
+                transition: 'border-color 0.15s ease, background 0.15s ease',
+              }}
+            >
+              <span style={{ display: 'grid', placeItems: 'center', flex: 'none', width: '36px', height: '36px', borderRadius: '50%', background: beat === b.id ? 'var(--holo)' : 'var(--secondary)', color: 'var(--ink)' }}>
+                <PixelDisc size={15}></PixelDisc>
+              </span>
+              <span style={{ minWidth: 0 }}>
+                <span style={{ display: 'block', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: '14px' }}>{b.title}</span>
+                <span className="mm-muted" style={{ display: 'block', fontSize: '12px' }}>{b.vibe}</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </Y2KWindow>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <button className="mm-btn mm-btn-primary" onClick={() => { toast('Reel saved ✦'); go('vibe'); }}>
+          <PixelDisc size={15}></PixelDisc> Save reel
+        </button>
+        <p className="mm-muted" style={{ fontSize: '12.5px', textAlign: 'center' }}>
+          <PixelStar size={11} style={{ color: 'var(--primary)' }}></PixelStar> You can re-edit your reel anytime.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+Object.assign(window, { OnboardingScreen, ReelBuilderScreen });
+})();
+</script>
+<script type="text/babel">
+// MemoryMatch — app shell: routing, theming, tweaks
+(() => {
+const { useState, useEffect } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "theme": "soft-pixel-romance",
+  "headingFont": "Baloo 2",
+  "holo": 85,
+  "spacing": "roomy"
+}/*EDITMODE-END*/;
+
+const SPACING = { cozy: 0.85, roomy: 1, airy: 1.18 };
+
+const ROUTES = ['landing', 'browse', 'vibe', 'chemistry', 'onboarding', 'reel'];
+
+function useHashRoute() {
+  const initial = () => {
+    const h = window.location.hash.replace(/^#\/?/, '');
+    return ROUTES.includes(h) ? h : 'landing';
+  };
+  const [route, setRoute] = useState(initial);
+  useEffect(() => {
+    const onHash = () => setRoute(initial());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  const go = (r) => {
+    window.location.hash = '/' + r;
+    window.scrollTo({ top: 0 });
+  };
+  return [route, go];
+}
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [route, go] = useHashRoute();
+  const [toastNode, toast] = useToast();
+
+  // apply theme + tweak vars to document
+  useEffect(() => {
+    const root = document.documentElement;
+    if (t.theme === 'soft-pixel-romance') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', t.theme);
+    root.style.setProperty('--holo-alpha', String(t.holo / 100));
+    root.style.setProperty('--space', String(SPACING[t.spacing] || 1));
+    root.style.setProperty('--font-heading', `'${t.headingFont}', system-ui, sans-serif`);
+  }, [t.theme, t.holo, t.spacing, t.headingFont]);
+
+  const screens = {
+    landing: <LandingScreen go={go}></LandingScreen>,
+    browse: <BrowseScreen go={go} toast={toast}></BrowseScreen>,
+    vibe: <VibeScreen go={go} toast={toast}></VibeScreen>,
+    chemistry: <ChemistryScreen go={go} toast={toast}></ChemistryScreen>,
+    onboarding: <OnboardingScreen go={go} toast={toast} theme={t.theme} setTheme={(v) => setTweak('theme', v)}></OnboardingScreen>,
+    reel: <ReelBuilderScreen go={go} toast={toast}></ReelBuilderScreen>,
+  };
+
+  return (
+    <React.Fragment>
+      <SiteHeader route={route} go={go}></SiteHeader>
+      {screens[route]}
+
+      {/* prototype screen switcher */}
+      <nav
+        aria-label="Prototype screens"
+        style={{
+          position: 'fixed', bottom: '14px', left: '50%', transform: 'translateX(-50%)', zIndex: 60,
+          display: 'flex', gap: '4px', padding: '6px',
+          background: 'color-mix(in oklch, var(--surface) 88%, transparent)',
+          backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)',
+          border: '1px solid var(--border)', borderRadius: '999px', boxShadow: 'var(--shadow-soft)',
+          maxWidth: 'calc(100vw - 24px)', overflowX: 'auto',
+        }}
+      >
+        {[['landing', 'home'], ['onboarding', 'setup'], ['reel', 'reel'], ['vibe', 'vibe'], ['browse', 'browse'], ['chemistry', 'match']].map(([r, label]) => (
+          <button
+            key={r}
+            onClick={() => go(r)}
+            style={{
+              border: 'none', borderRadius: '999px', padding: '7px 13px', fontSize: '12.5px',
+              fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '0.03em', whiteSpace: 'nowrap',
+              background: route === r ? 'var(--primary)' : 'transparent',
+              color: route === r ? 'var(--primary-fg)' : 'var(--muted)',
+              cursor: 'pointer', transition: 'background 0.15s ease, color 0.15s ease',
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
+
+      {toastNode}
+
+      <TweaksPanel>
+        <TweakSection label="Theme"></TweakSection>
+        <TweakSelect
+          label="Profile theme"
+          value={t.theme}
+          options={[
+            { value: 'soft-pixel-romance', label: 'Soft Pixel Romance' },
+            { value: 'late-night-aim', label: 'Late Night AIM' },
+            { value: 'cyber-cafe', label: 'Cyber Café' },
+            { value: 'arcade-crush', label: 'Arcade Crush' },
+            { value: 'dreamcast-summer', label: 'Dreamcast Summer' },
+          ]}
+          onChange={(v) => setTweak('theme', v)}
+        ></TweakSelect>
+        <TweakSlider label="Holo shimmer" value={t.holo} min={0} max={100} unit="%" onChange={(v) => setTweak('holo', v)}></TweakSlider>
+        <TweakSection label="Type & space"></TweakSection>
+        <TweakRadio label="Heading font" value={t.headingFont} options={['Baloo 2', 'Fredoka', 'Gabarito']} onChange={(v) => setTweak('headingFont', v)}></TweakRadio>
+        <TweakRadio label="Spacing" value={t.spacing} options={['cozy', 'roomy', 'airy']} onChange={(v) => setTweak('spacing', v)}></TweakRadio>
+      </TweaksPanel>
+    </React.Fragment>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App></App>);
+})();
+</script>
+</body>
+</html>
