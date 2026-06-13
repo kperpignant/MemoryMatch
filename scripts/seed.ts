@@ -4,7 +4,8 @@
  *
  * Idempotent — uses onConflictDoNothing / lookups so re-runs are safe.
  */
-import 'dotenv/config'
+import { config } from 'dotenv'
+config({ path: '.env.local' })
 import { eq } from 'drizzle-orm'
 import { db, schema } from '../lib/db'
 

@@ -10,16 +10,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PixelWave, PixelStar } from '@/components/pixel-icons'
 import { Search } from 'lucide-react'
-import { SAMPLE_BUDDIES } from '@/lib/memorymatch'
+import type { BuddySummary } from '@/lib/queries'
 
-// give the sample buddies an intent + pace label for filtering
-const PACES = ['slow burn', 'friend first', 'open to dating', 'just browsing', 'co-op mode']
-const buddies = SAMPLE_BUDDIES.map((b, i) => ({
-  ...b,
-  pace: PACES[i % PACES.length],
-}))
+const INTENT_LABEL: Record<string, string> = {
+  open_to_dating: 'open to dating',
+  slow_burn: 'slow burn',
+  friend_first: 'friend first',
+  just_browsing: 'just browsing',
+  co_op_mode: 'co-op mode',
+  social_discovery: 'social discovery',
+}
 
-type Buddy = (typeof buddies)[number]
+type Buddy = BuddySummary & { pace: string }
 
 function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => void }) {
   return (
@@ -28,12 +30,12 @@ function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => voi
         href={`/vibe/${buddy.username}`}
         className="relative size-14 shrink-0 overflow-hidden rounded-lg"
       >
-        <Image src={buddy.reelThumb} alt="" fill className="object-cover" sizes="56px" />
-        {buddy.online && (
-          <span
-            className="absolute bottom-1 right-1 size-3 rounded-full border-2 border-card bg-[var(--mm-match)]"
-            aria-label="online"
-          />
+        {buddy.reelThumb ? (
+          <Image src={buddy.reelThumb} alt="" fill className="object-cover" sizes="56px" />
+        ) : (
+          <span className="grid size-full place-items-center bg-secondary text-lg font-bold text-secondary-foreground">
+            {buddy.displayName.charAt(0)}
+          </span>
         )}
       </Link>
       <div className="min-w-0 flex-1">
@@ -45,9 +47,11 @@ function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => voi
           <span className="font-normal text-muted-foreground">@{buddy.username}</span>
         </Link>
         <p className="truncate text-sm text-muted-foreground">{buddy.mood}</p>
-        <span className="mt-1 inline-block rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-foreground">
-          {buddy.pace}
-        </span>
+        {buddy.pace && (
+          <span className="mt-1 inline-block rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-foreground">
+            {buddy.pace}
+          </span>
+        )}
       </div>
       <Button
         variant="outline"
@@ -62,26 +66,33 @@ function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => voi
   )
 }
 
-export function BrowseList() {
+export function BrowseList({ buddies }: { buddies: BuddySummary[] }) {
   const [query, setQuery] = useState('')
   const [pace, setPace] = useState<string | null>(null)
   const [charmFor, setCharmFor] = useState<Buddy | null>(null)
 
+  const enriched: Buddy[] = buddies.map((b) => ({
+    ...b,
+    pace: b.intent ? (INTENT_LABEL[b.intent] ?? b.intent.replace(/_/g, ' ')) : '',
+  }))
+
+  const paces = useMemo(
+    () => [...new Set(enriched.map((b) => b.pace).filter(Boolean))],
+    [enriched],
+  )
+
   const filtered = useMemo(() => {
-    return buddies.filter((b) => {
+    return enriched.filter((b) => {
       const matchesPace = !pace || b.pace === pace
       const q = query.trim().toLowerCase()
       const matchesQuery =
         !q ||
         b.displayName.toLowerCase().includes(q) ||
         b.username.toLowerCase().includes(q) ||
-        b.mood.toLowerCase().includes(q)
+        (b.mood ?? '').toLowerCase().includes(q)
       return matchesPace && matchesQuery
     })
-  }, [query, pace])
-
-  const online = filtered.filter((b) => b.online)
-  const offline = filtered.filter((b) => !b.online)
+  }, [enriched, query, pace])
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 md:py-10">
@@ -109,57 +120,34 @@ export function BrowseList() {
               aria-label="Search buddies"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Chip selected={pace === null} onClick={() => setPace(null)}>
-              everyone
-            </Chip>
-            {PACES.map((p) => (
-              <Chip key={p} selected={pace === p} onClick={() => setPace(p)}>
-                {p}
+          {paces.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <Chip selected={pace === null} onClick={() => setPace(null)}>
+                everyone
               </Chip>
-            ))}
-          </div>
+              {paces.map((p) => (
+                <Chip key={p} selected={pace === p} onClick={() => setPace(p)}>
+                  {p}
+                </Chip>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Lists */}
+        {/* List */}
         <div className="mt-5 flex flex-col gap-5">
-          <section>
-            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
-              <span className="size-2.5 rounded-full bg-[var(--mm-match)]" />
-              Online — {online.length}
-            </h3>
-            {online.length > 0 ? (
-              <ul className="flex flex-col gap-2">
-                {online.map((b) => (
-                  <BuddyRow key={b.username} buddy={b} onCharm={setCharmFor} />
-                ))}
-              </ul>
-            ) : (
-              <p className="rounded-xl bg-secondary/30 px-4 py-5 text-center text-sm text-muted-foreground">
-                Nobody matching that is online right now.
-              </p>
-            )}
-          </section>
-
-          <section>
-            <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-              <span className="size-2.5 rounded-full bg-muted-foreground/40" />
-              Away — {offline.length}
-            </h3>
-            {offline.length > 0 ? (
-              <ul className="flex flex-col gap-2 opacity-80">
-                {offline.map((b) => (
-                  <BuddyRow key={b.username} buddy={b} onCharm={setCharmFor} />
-                ))}
-              </ul>
-            ) : (
-              <p className="rounded-xl bg-secondary/30 px-4 py-5 text-center text-sm text-muted-foreground">
-                No matches away right now.
-              </p>
-            )}
-          </section>
-
-          {filtered.length === 0 && (
+          {filtered.length > 0 ? (
+            <ul className="flex flex-col gap-2">
+              {filtered.map((b) => (
+                <BuddyRow key={b.username} buddy={b} onCharm={setCharmFor} />
+              ))}
+            </ul>
+          ) : buddies.length === 0 ? (
+            <p className="flex items-center justify-center gap-2 rounded-xl bg-secondary/30 px-4 py-8 text-center text-sm text-muted-foreground">
+              <PixelStar size={14} className="text-[var(--mm-accent)]" />
+              No one here yet — be the first to set up your Vibe Page.
+            </p>
+          ) : (
             <p className="flex items-center justify-center gap-2 rounded-xl bg-secondary/30 px-4 py-8 text-center text-sm text-muted-foreground">
               <PixelStar size={14} className="text-[var(--mm-accent)]" />
               No one matches that yet — try a different pace or search.

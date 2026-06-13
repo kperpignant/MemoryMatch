@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 export type OnboardingData = {
   username: string
   displayName: string
+  avatarUrl: string
   dateOfBirth: string
   intents: IntentId[]
   softLaunch: boolean
@@ -48,19 +49,29 @@ const STEP_TITLES = ['Your name', 'Your vibe', 'Your look', 'Your top 8']
 
 export function OnboardingWizard({
   onComplete,
+  initial,
+  submitLabel,
+  onExit,
 }: {
   onComplete?: (data: OnboardingData) => void
+  /** Prefilled values for edit mode (Vibe Page → Edit profile). */
+  initial?: Partial<OnboardingData>
+  /** Override the final button label (e.g. "Save changes" when editing). */
+  submitLabel?: string
+  /** When set, the first-step Back button becomes "Exit" (e.g. cancel an edit). */
+  onExit?: () => void
 }) {
   const [step, setStep] = React.useState(0)
-  const [username, setUsername] = React.useState('')
-  const [displayName, setDisplayName] = React.useState('')
-  const [dateOfBirth, setDateOfBirth] = React.useState('')
-  const [intents, setIntents] = React.useState<IntentId[]>(['slow-burn'])
-  const [softLaunch, setSoftLaunch] = React.useState(true)
-  const [theme, setTheme] = React.useState<ThemeId>('soft-pixel-romance')
-  const [bio, setBio] = React.useState('')
-  const [mood, setMood] = React.useState('')
-  const [interests, setInterests] = React.useState<string[]>([])
+  const [username, setUsername] = React.useState(initial?.username ?? '')
+  const [displayName, setDisplayName] = React.useState(initial?.displayName ?? '')
+  const [avatarUrl, setAvatarUrl] = React.useState(initial?.avatarUrl ?? '')
+  const [dateOfBirth, setDateOfBirth] = React.useState(initial?.dateOfBirth ?? '')
+  const [intents, setIntents] = React.useState<IntentId[]>(initial?.intents ?? ['slow-burn'])
+  const [softLaunch, setSoftLaunch] = React.useState(initial?.softLaunch ?? true)
+  const [theme, setTheme] = React.useState<ThemeId>(initial?.theme ?? 'soft-pixel-romance')
+  const [bio, setBio] = React.useState(initial?.bio ?? '')
+  const [mood, setMood] = React.useState(initial?.mood ?? '')
+  const [interests, setInterests] = React.useState<string[]>(initial?.interests ?? [])
 
   // ---- username validation ----
   const usernameError = React.useMemo(() => {
@@ -108,6 +119,7 @@ export function OnboardingWizard({
       onComplete?.({
         username,
         displayName,
+        avatarUrl,
         dateOfBirth,
         intents,
         softLaunch,
@@ -156,6 +168,8 @@ export function OnboardingWizard({
             usernameError={usernameError}
             displayName={displayName}
             setDisplayName={setDisplayName}
+            avatarUrl={avatarUrl}
+            setAvatarUrl={setAvatarUrl}
             dateOfBirth={dateOfBirth}
             setDateOfBirth={setDateOfBirth}
             dateOfBirthError={dateOfBirthError}
@@ -191,15 +205,15 @@ export function OnboardingWizard({
       <div className="mt-5 flex items-center justify-between gap-3">
         <Button
           variant="ghost"
-          onClick={() => setStep((s) => Math.max(0, s - 1))}
-          disabled={step === 0}
+          onClick={() => (step === 0 ? onExit?.() : setStep((s) => Math.max(0, s - 1)))}
+          disabled={step === 0 && !onExit}
         >
-          Back
+          {step === 0 && onExit ? 'Exit' : 'Back'}
         </Button>
         <Button onClick={next} disabled={!canAdvance} className="font-semibold">
           {isLast ? (
             <>
-              <PixelHeart size={15} className="mr-1" /> Finish setup
+              <PixelHeart size={15} className="mr-1" /> {submitLabel ?? 'Finish setup'}
             </>
           ) : (
             'Continue'
@@ -217,6 +231,8 @@ function StepName({
   usernameError,
   displayName,
   setDisplayName,
+  avatarUrl,
+  setAvatarUrl,
   dateOfBirth,
   setDateOfBirth,
   dateOfBirthError,
@@ -226,10 +242,36 @@ function StepName({
   usernameError: string | null
   displayName: string
   setDisplayName: (v: string) => void
+  avatarUrl: string
+  setAvatarUrl: (v: string) => void
   dateOfBirth: string
   setDateOfBirth: (v: string) => void
   dateOfBirthError: string | null
 }) {
+  const fileRef = React.useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = React.useState(false)
+  const [uploadError, setUploadError] = React.useState<string | null>(null)
+
+  async function onPickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body })
+      const data = (await res.json()) as { url?: string; error?: string }
+      if (!res.ok || !data.url) throw new Error(data.error ?? 'Upload failed')
+      setAvatarUrl(data.url)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-1">
@@ -240,6 +282,49 @@ function StepName({
           No pressure — you can change all of this later.
         </p>
       </header>
+
+      <div className="flex items-center gap-4">
+        <div className="size-20 shrink-0 overflow-hidden rounded-2xl bg-secondary shadow-inner">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="Your profile picture" className="size-full object-cover" />
+          ) : (
+            <div className="grid size-full place-items-center text-2xl font-bold text-secondary-foreground">
+              {(displayName.charAt(0) || '?').toUpperCase()}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col items-start gap-1.5">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onPickAvatar}
+          />
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading ? 'Uploading…' : avatarUrl ? 'Change photo' : 'Upload photo'}
+          </Button>
+          {avatarUrl && !uploading && (
+            <button
+              type="button"
+              className="text-xs text-muted-foreground underline"
+              onClick={() => setAvatarUrl('')}
+            >
+              Remove
+            </button>
+          )}
+          <p className={cn('text-xs', uploadError ? 'text-destructive' : 'text-muted-foreground')}>
+            {uploadError ?? 'Square images look best.'}
+          </p>
+        </div>
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="username">Username</Label>

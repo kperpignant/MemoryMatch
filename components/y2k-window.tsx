@@ -54,7 +54,7 @@ export function Y2KWindow({
           )}
         </header>
       )}
-      <div className={cn('y2k-gloss', bodyClassName)}>{children}</div>
+      <div className={cn('y2k-gloss p-4', bodyClassName)}>{children}</div>
     </section>
   )
 }

@@ -76,6 +76,7 @@ export const profiles = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     username: text('username').unique().notNull(),
     bio: text('bio'),
+    avatarUrl: text('avatar_url'), // profile picture (Vercel Blob URL); null = initials
     datingIntent: text('dating_intent').notNull().default('open_to_dating'),
     softLaunchModeEnabled: boolean('soft_launch_mode_enabled').notNull().default(true),
     moodStatus: text('mood_status'),
