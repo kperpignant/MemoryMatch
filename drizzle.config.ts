@@ -10,8 +10,10 @@ export default defineConfig({
   dialect: 'postgresql',
   dbCredentials: {
     url: process.env.DATABASE_URL ?? '',
-    // Aurora requires SSL; drizzle-kit makes its own connection so set it here too.
-    ssl: process.env.DATABASE_SSL === 'disable' ? false : 'require',
+    // Aurora requires SSL. drizzle-kit (incl. studio) uses its own driver that
+    // ignores the string 'require', so pass the object form it honors. Aurora's
+    // CA isn't in the default trust store, so don't verify the chain here.
+    ssl: process.env.DATABASE_SSL === 'disable' ? false : { rejectUnauthorized: false },
   },
   strict: true,
   verbose: true,
