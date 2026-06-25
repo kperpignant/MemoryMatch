@@ -77,8 +77,8 @@ export function OnboardingWizard({
   const usernameError = React.useMemo(() => {
     if (!username) return null
     if (username.length < 3) return 'At least 3 characters.'
-    if (!/^[a-z0-9_]+$/.test(username))
-      return 'Lowercase letters, numbers, and underscores only.'
+    if (!/^[a-z0-9_-]+$/.test(username))
+      return 'Lowercase letters, numbers, hyphens, and underscores only.'
     return null
   }, [username])
 
@@ -134,7 +134,7 @@ export function OnboardingWizard({
   }
 
   return (
-    <div className="mx-auto w-full max-w-lg px-4 py-8" data-theme={theme}>
+    <div className="mx-auto w-full max-w-lg px-4 py-8 text-foreground" data-theme={theme}>
       {/* progress */}
       <div className="mb-5">
         <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
@@ -350,7 +350,7 @@ function StepName({
           {usernameError ??
             (username.length >= 3
               ? 'Looks good — this is your vibe.gg/@handle.'
-              : 'Lowercase letters, numbers, underscores.')}
+              : 'Lowercase letters, numbers, hyphens, underscores.')}
         </p>
       </div>
 

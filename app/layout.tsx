@@ -2,6 +2,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Baloo_2, Onest, Space_Mono } from 'next/font/google'
+import { DEFAULT_THEME_ID, getMyThemeId } from '@/lib/queries'
 import './globals.css'
 
 const baloo = Baloo_2({
@@ -36,14 +37,19 @@ export const viewport: Viewport = {
 // local dev and preview builds don't hard-fail.
 const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY)
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Apply the signed-in user's chosen palette to every route. Server-rendered
+  // on <html> so there's no theme flash on load. Profile pages (/me, /vibe)
+  // still override this with the page owner's theme for their own subtree.
+  const themeId = clerkConfigured ? await getMyThemeId() : DEFAULT_THEME_ID
   const body = (
     <html
       lang="en"
+      data-theme={themeId}
       className={`${baloo.variable} ${onest.variable} ${spaceMono.variable} bg-background`}
     >
       <body className="font-sans antialiased">

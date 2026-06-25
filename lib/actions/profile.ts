@@ -70,7 +70,7 @@ const onboardingInput = z.object({
     .string()
     .min(3)
     .max(30)
-    .regex(/^[a-z0-9_]+$/, 'Lowercase letters, numbers, and underscores only'),
+    .regex(/^[a-z0-9_-]+$/, 'Lowercase letters, numbers, hyphens, and underscores only'),
   displayName: z.string().trim().min(1).max(50),
   intent: z.enum(INTENT_IDS).default('open-to-dating'),
   softLaunch: z.boolean().default(true),
