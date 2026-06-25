@@ -73,6 +73,18 @@ export async function requireUser() {
     .from(schema.users)
     .where(and(eq(schema.users.authProviderId, clerkId), eq(schema.users.status, 'active')))
     .limit(1)
-  if (!now) throw new Error('Unauthorized: no active account')
-  return now
+  if (now) return now
+
+  // The email already belongs to a prior identity for this person (e.g. the Clerk
+  // account was recreated, yielding a new auth_provider_id). Verified emails are
+  // unique per human, so re-link the existing account to the current Clerk id
+  // instead of failing — this preserves their profile and data.
+  const [relinked] = await dbc
+    .update(schema.users)
+    .set({ authProviderId: clerkId, status: 'active', updatedAt: new Date() })
+    .where(eq(schema.users.email, email))
+    .returning()
+  if (relinked) return relinked
+
+  throw new Error('Unauthorized: no active account')
 }
