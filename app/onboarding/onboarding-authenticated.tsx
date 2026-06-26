@@ -4,7 +4,17 @@ import { useUser } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { OnboardingWizard, type OnboardingData } from '@/components/onboarding/onboarding-wizard'
-import { completeOnboarding, getProfileForEdit } from '@/lib/actions/profile'
+import { completeOnboarding, getProfileForEdit, updateProfile } from '@/lib/actions/profile'
+
+/** Update <html data-theme> live so a theme change reflects site-wide
+ *  immediately — the server-rendered root layout only re-reads it on a full
+ *  page load, so without this the new theme wouldn't apply to other routes
+ *  (e.g. /browse) until the next sign-in. */
+function applyThemeSiteWide(theme: string) {
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', theme)
+  }
+}
 
 export function OnboardingAuthenticated() {
   const router = useRouter()
@@ -55,8 +65,33 @@ export function OnboardingAuthenticated() {
     setError(null)
 
     try {
-      // 1) Persist DOB to Clerk — this is the 18+ gate and lets the webhook
-      //    create/activate the user row in production.
+      if (isEditing) {
+        // Edit mode: identity (username, date of birth) is locked — only the
+        // mutable fields go through updateProfile, which can't change the
+        // username and never touches DOB.
+        await updateProfile({
+          displayName: data.displayName,
+          intent: (data.intents[0] ??
+            'open-to-dating') as Parameters<typeof updateProfile>[0]['intent'],
+          softLaunch: data.softLaunch,
+          theme: data.theme,
+          bio: data.bio || undefined,
+          mood: data.mood || undefined,
+          avatarUrl: data.avatarUrl || undefined,
+          interests: data.interests,
+          city: data.city,
+          state: data.state,
+          latitude: data.lat,
+          longitude: data.lng,
+        })
+
+        applyThemeSiteWide(data.theme)
+        router.push('/me')
+        return
+      }
+
+      // First-time onboarding: 1) Persist DOB to Clerk — the 18+ gate that lets
+      //    the webhook create/activate the user row in production.
       await user.update({
         unsafeMetadata: {
           ...user.unsafeMetadata,
@@ -90,6 +125,7 @@ export function OnboardingAuthenticated() {
         return
       }
 
+      applyThemeSiteWide(data.theme)
       router.push(`/vibe/${result.username}`)
     } catch (err) {
       console.error('[onboarding] failed to complete onboarding', err)
@@ -118,6 +154,7 @@ export function OnboardingAuthenticated() {
         initial={initial ?? undefined}
         submitLabel={isEditing ? 'Save changes' : undefined}
         onExit={isEditing ? () => router.push('/me') : undefined}
+        lockIdentity={isEditing}
       />
       {saving && (
         <p className="mt-4 text-center text-sm text-muted-foreground">Saving your profile…</p>

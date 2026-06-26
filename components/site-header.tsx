@@ -7,12 +7,12 @@ import { PixelHeart } from '@/components/pixel-icons'
 import { cn } from '@/lib/utils'
 
 const navLink =
-  'rounded-lg px-3 py-1.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground'
+  'rounded-lg px-2.5 py-1.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:px-3'
 
 const navLinkActive = 'bg-muted text-foreground'
 
 const navCta =
-  'rounded-lg bg-primary px-3 py-1.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90'
+  'rounded-lg bg-primary px-2.5 py-1.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:px-3'
 
 export function SiteHeader() {
   const { signOut } = useClerk()
@@ -21,16 +21,16 @@ export function SiteHeader() {
     pathname === href || pathname.startsWith(`${href}/`)
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-3">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
+      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 py-3">
+        <Link href="/" className="flex min-w-0 items-center gap-2">
+          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
             <PixelHeart size={16} />
           </span>
-          <span className="font-heading text-lg font-bold tracking-tight text-foreground">
+          <span className="truncate font-heading text-base font-bold tracking-tight text-foreground sm:text-lg">
             MemoryMatch
           </span>
         </Link>
-        <nav className="flex items-center gap-1 text-sm">
+        <nav className="flex shrink-0 items-center gap-0.5 text-sm sm:gap-1">
           <Link
             href="/browse"
             className={cn(navLink, isActive('/browse') && navLinkActive)}
