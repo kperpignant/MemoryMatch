@@ -170,6 +170,8 @@ export type VibePageData = {
   city: string | null
   state: string | null
   isOwner: boolean
+  viewerHasLiked: boolean
+  viewerHasCharmed: boolean
   interests: string[]
   prompts: { question: string; answer: string }[]
   reel: {
@@ -260,10 +262,34 @@ export async function getVibePage(username: string): Promise<VibePageData | null
     reel = { beat, frames }
   }
 
+  // Whether the viewer has already liked / charmed this person (so the UI can
+  // reflect persisted state on revisit instead of always rendering "un-liked").
+  let viewerHasLiked = false
+  let viewerHasCharmed = false
+  if (row.userId !== me.id) {
+    const [likeRow] = await dbc
+      .select({ id: schema.likes.id })
+      .from(schema.likes)
+      .where(and(eq(schema.likes.likerUserId, me.id), eq(schema.likes.likedUserId, row.userId)))
+      .limit(1)
+    viewerHasLiked = Boolean(likeRow)
+
+    const [charmRow] = await dbc
+      .select({ id: schema.reelReactions.id })
+      .from(schema.reelReactions)
+      .innerJoin(schema.reelFrames, eq(schema.reelReactions.reelFrameId, schema.reelFrames.id))
+      .innerJoin(schema.memoryReels, eq(schema.reelFrames.reelId, schema.memoryReels.id))
+      .where(and(eq(schema.reelReactions.reactorUserId, me.id), eq(schema.memoryReels.userId, row.userId)))
+      .limit(1)
+    viewerHasCharmed = Boolean(charmRow)
+  }
+
   const { profileId: _omit, ...pub } = row
   return {
     ...pub,
     isOwner: row.userId === me.id,
+    viewerHasLiked,
+    viewerHasCharmed,
     interests: interests.map((i) => i.name),
     prompts,
     reel,

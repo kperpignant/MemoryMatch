@@ -31,6 +31,8 @@ export default async function VibeProfilePage({
     top8: [],
     prompts: data.prompts.map((p) => ({ q: p.question, a: p.answer })),
     reelThumbFrameId: data.reel?.frames[0]?.id,
+    alreadyLiked: data.viewerHasLiked,
+    alreadyCharmed: data.viewerHasCharmed,
     reel: data.reel
       ? {
           beatLabel: data.reel.beat?.title ?? undefined,
