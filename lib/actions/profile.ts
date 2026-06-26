@@ -197,6 +197,7 @@ export async function updateProfile(input: z.infer<typeof updateInput>) {
       ...(data.mood !== undefined && { moodStatus: data.mood }),
       ...(data.intent && { datingIntent: toDb(data.intent) }),
       ...(data.theme && { profileTheme: toDb(data.theme) }),
+      ...(data.avatarUrl !== undefined && { avatarUrl: data.avatarUrl || null }),
       ...(data.softLaunch !== undefined && { softLaunchModeEnabled: data.softLaunch }),
       ...(data.city !== undefined && { city: data.city ?? null }),
       ...(data.state !== undefined && { state: data.state ?? null }),
@@ -213,6 +214,14 @@ export async function updateProfile(input: z.infer<typeof updateInput>) {
       .set({ displayName: data.displayName, updatedAt: new Date() })
       .where(eq(schema.users.id, me.id))
   }
+
+  await dbc.insert(schema.auditEvents).values({
+    actorUserId: me.id,
+    action: 'profile_update',
+    targetType: 'profile',
+    targetId: profile.id,
+  })
+
   return { ok: true }
 }
 

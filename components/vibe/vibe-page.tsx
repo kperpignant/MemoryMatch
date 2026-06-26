@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Y2KWindow } from '@/components/y2k-window'
+import { PanelGrid } from '@/components/panel-grid'
 import { ReelPlayer, type ReelFrame } from '@/components/reel-player'
 import { SafetyMenu } from '@/components/safety-menu'
 import { CharmComposer, type CharmKind } from '@/components/charm-composer'
@@ -88,9 +89,9 @@ export function VibePage({
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 md:py-10">
-      <div className="grid gap-5 lg:grid-cols-[1.4fr_1fr]">
+      <PanelGrid>
         {/* LEFT COLUMN */}
-        <div className="flex flex-col gap-5">
+        <PanelGrid.Main>
           {/* Identity window */}
           <Y2KWindow title={`${profile.username}.vibe`} accent>
             <div className="flex items-start gap-4">
@@ -173,10 +174,10 @@ export function VibePage({
               ))}
             </div>
           </Y2KWindow>
-        </div>
+        </PanelGrid.Main>
 
         {/* RIGHT COLUMN */}
-        <div className="flex flex-col gap-5">
+        <PanelGrid.Side>
           {/* Action card (hidden for owner) */}
           {!isOwner ? (
             <Y2KWindow title="say hi?" accent>
@@ -282,8 +283,8 @@ export function VibePage({
               </ul>
             </Y2KWindow>
           )}
-        </div>
-      </div>
+        </PanelGrid.Side>
+      </PanelGrid>
 
       <CharmComposer
         open={charmOpen}
