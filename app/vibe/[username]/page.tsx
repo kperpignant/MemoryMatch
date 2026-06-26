@@ -21,6 +21,8 @@ export default async function VibeProfilePage({
     displayName: data.displayName,
     avatarUrl: data.avatar ?? undefined,
     mood: data.mood ?? '',
+    location:
+      data.city && data.state ? `${data.city}, ${data.state}` : undefined,
     intents: [toUiId(data.intent) as IntentId],
     blurb: data.bio ?? '',
     interests: data.interests,

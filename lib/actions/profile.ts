@@ -62,10 +62,26 @@ export async function getProfileForEdit() {
     avatarUrl: p.avatarUrl ?? '',
     interests: ints.map((i) => i.name),
     dateOfBirth: me.dateOfBirth ? String(me.dateOfBirth).slice(0, 10) : '',
+    city: p.city ?? '',
+    state: p.state ?? '',
+    lat: p.latitude ?? undefined,
+    lng: p.longitude ?? undefined,
   }
 }
 
-const onboardingInput = z.object({
+const locationRefine = (data: {
+  city?: string
+  state?: string
+  latitude?: number
+  longitude?: number
+}) => {
+  const hasAny = data.city || data.state || data.latitude != null || data.longitude != null
+  const hasAll =
+    !!data.city && !!data.state && data.latitude != null && data.longitude != null
+  return !hasAny || hasAll
+}
+
+const onboardingBase = z.object({
   username: z
     .string()
     .min(3)
@@ -80,6 +96,14 @@ const onboardingInput = z.object({
   avatarUrl: z.string().url().max(2048).optional(),
   /** Top 8, ordered; free-text allowed (upserted into `interests`) */
   interests: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
+  city: z.string().trim().min(1).max(100).optional(),
+  state: z.string().trim().min(1).max(2).optional(),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+})
+
+const onboardingInput = onboardingBase.refine(locationRefine, {
+  message: 'Location must include city, state, and coordinates together',
 })
 
 export type OnboardingResult =
@@ -115,6 +139,10 @@ export async function completeOnboarding(
     softLaunchModeEnabled: data.softLaunch,
     moodStatus: data.mood ?? null,
     profileTheme: toDb(data.theme),
+    city: data.city ?? null,
+    state: data.state ?? null,
+    latitude: data.latitude ?? null,
+    longitude: data.longitude ?? null,
     updatedAt: new Date(),
   }
 
@@ -143,7 +171,9 @@ export async function completeOnboarding(
   return { ok: true, username: data.username }
 }
 
-const updateInput = onboardingInput.partial().omit({ username: true })
+const updateInput = onboardingBase.partial().omit({ username: true }).refine(locationRefine, {
+  message: 'Location must include city, state, and coordinates together',
+})
 
 export async function updateProfile(input: z.infer<typeof updateInput>) {
   const data = updateInput.parse(input)
@@ -168,6 +198,10 @@ export async function updateProfile(input: z.infer<typeof updateInput>) {
       ...(data.intent && { datingIntent: toDb(data.intent) }),
       ...(data.theme && { profileTheme: toDb(data.theme) }),
       ...(data.softLaunch !== undefined && { softLaunchModeEnabled: data.softLaunch }),
+      ...(data.city !== undefined && { city: data.city ?? null }),
+      ...(data.state !== undefined && { state: data.state ?? null }),
+      ...(data.latitude !== undefined && { latitude: data.latitude ?? null }),
+      ...(data.longitude !== undefined && { longitude: data.longitude ?? null }),
       updatedAt: new Date(),
     })
     .where(eq(schema.profiles.id, profile.id))

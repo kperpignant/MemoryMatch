@@ -4,7 +4,7 @@
  * Server-only — called from server components / route handlers.
  */
 import { auth } from '@clerk/nextjs/server'
-import { and, asc, eq, ne, notInArray, or } from 'drizzle-orm'
+import { and, asc, eq, ne, notInArray, or, sql } from 'drizzle-orm'
 import { requireUser } from '@/lib/auth'
 import { db, schema } from '@/lib/db'
 
@@ -33,13 +33,74 @@ export type BuddySummary = {
   theme: string
   reelThumb: string | null
   intent: string | null
+  city: string | null
+  state: string | null
+  distanceMiles: number | null
+}
+
+export type BrowseListOptions = {
+  maxDistanceMiles?: number
+}
+
+/** Haversine distance in miles (viewer at lat0/lng0, row at lat/lng). */
+function haversineMilesSql(
+  lat0: number,
+  lng0: number,
+  latCol: typeof schema.profiles.latitude,
+  lngCol: typeof schema.profiles.longitude,
+) {
+  return sql<number>`(
+    3959 * acos(
+      least(1.0, greatest(-1.0,
+        cos(radians(${lat0})) * cos(radians(${latCol}))
+        * cos(radians(${lngCol}) - radians(${lng0}))
+        + sin(radians(${lat0})) * sin(radians(${latCol}))
+      ))
+    )
+  )`
 }
 
 /** Browse buddy list: active users/profiles, blocked pairs excluded, me excluded. */
-export async function getBrowseList(): Promise<BuddySummary[]> {
+export async function getBrowseList(opts?: BrowseListOptions): Promise<BuddySummary[]> {
   const me = await requireUser()
   const hidden = await blockedIdsFor(me.id)
   const dbc = db()
+
+  const [myProfile] = await dbc
+    .select({
+      latitude: schema.profiles.latitude,
+      longitude: schema.profiles.longitude,
+    })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.userId, me.id))
+    .limit(1)
+
+  const myLat = myProfile?.latitude
+  const myLng = myProfile?.longitude
+  const useDistance =
+    opts?.maxDistanceMiles != null &&
+    myLat != null &&
+    myLng != null &&
+    Number.isFinite(opts.maxDistanceMiles)
+
+  const distanceExpr =
+    useDistance && myLat != null && myLng != null
+      ? haversineMilesSql(myLat, myLng, schema.profiles.latitude, schema.profiles.longitude)
+      : sql<number | null>`null`
+
+  const baseWhere = and(
+    eq(schema.profiles.status, 'active'),
+    eq(schema.users.status, 'active'),
+    ne(schema.users.id, me.id),
+    ...(hidden.length > 0 ? [notInArray(schema.users.id, hidden)] : []),
+    ...(useDistance
+      ? [
+          sql`${schema.profiles.latitude} IS NOT NULL`,
+          sql`${schema.profiles.longitude} IS NOT NULL`,
+          sql`${distanceExpr} <= ${opts!.maxDistanceMiles!}`,
+        ]
+      : []),
+  )
 
   const rows = await dbc
     .select({
@@ -49,18 +110,16 @@ export async function getBrowseList(): Promise<BuddySummary[]> {
       mood: schema.profiles.moodStatus,
       theme: schema.profiles.profileTheme,
       intent: schema.profiles.datingIntent,
+      city: schema.profiles.city,
+      state: schema.profiles.state,
+      distanceMiles: distanceExpr,
     })
     .from(schema.profiles)
     .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
-    .where(
-      and(
-        eq(schema.profiles.status, 'active'),
-        eq(schema.users.status, 'active'),
-        ne(schema.users.id, me.id),
-        ...(hidden.length > 0 ? [notInArray(schema.users.id, hidden)] : []),
-      ),
+    .where(baseWhere)
+    .orderBy(
+      useDistance ? sql`${distanceExpr} asc` : asc(schema.profiles.username),
     )
-    .orderBy(asc(schema.profiles.username))
     .limit(50)
 
   // First frame of each user's active reel as the thumbnail.
@@ -74,7 +133,13 @@ export async function getBrowseList(): Promise<BuddySummary[]> {
       .where(and(eq(schema.memoryReels.userId, row.userId), eq(schema.memoryReels.isActive, true)))
       .orderBy(asc(schema.reelFrames.position))
       .limit(1)
-    result.push({ ...row, reelThumb: thumb?.url ?? null, intent: row.intent })
+    result.push({
+      ...row,
+      reelThumb: thumb?.url ?? null,
+      intent: row.intent,
+      distanceMiles:
+        row.distanceMiles != null ? Math.round(Number(row.distanceMiles) * 10) / 10 : null,
+    })
   }
   return result
 }
@@ -89,6 +154,8 @@ export type VibePageData = {
   intent: string
   avatar: string | null
   softLaunch: boolean
+  city: string | null
+  state: string | null
   isOwner: boolean
   interests: string[]
   prompts: { question: string; answer: string }[]
@@ -115,6 +182,8 @@ export async function getVibePage(username: string): Promise<VibePageData | null
       intent: schema.profiles.datingIntent,
       avatar: schema.profiles.avatarUrl,
       softLaunch: schema.profiles.softLaunchModeEnabled,
+      city: schema.profiles.city,
+      state: schema.profiles.state,
     })
     .from(schema.profiles)
     .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
@@ -272,6 +341,20 @@ export async function getMyProfile() {
     .where(eq(schema.profiles.userId, me.id))
     .limit(1)
   return profile ? { ...profile, displayName: me.displayName } : null
+}
+
+/** Whether the signed-in user has a coarse location set (for browse distance filter). */
+export async function viewerHasLocation(): Promise<boolean> {
+  const me = await requireUser()
+  const [row] = await db()
+    .select({
+      latitude: schema.profiles.latitude,
+      longitude: schema.profiles.longitude,
+    })
+    .from(schema.profiles)
+    .where(eq(schema.profiles.userId, me.id))
+    .limit(1)
+  return row?.latitude != null && row?.longitude != null
 }
 
 /**

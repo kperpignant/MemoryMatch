@@ -3,13 +3,14 @@
 import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Y2KWindow } from '@/components/y2k-window'
 import { CharmComposer } from '@/components/charm-composer'
 import { Chip } from '@/components/chip'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PixelWave, PixelStar } from '@/components/pixel-icons'
-import { Search } from 'lucide-react'
+import { MapPin, Search } from 'lucide-react'
 import type { BuddySummary } from '@/lib/queries'
 
 const INTENT_LABEL: Record<string, string> = {
@@ -21,9 +22,24 @@ const INTENT_LABEL: Record<string, string> = {
   social_discovery: 'social discovery',
 }
 
+const RADIUS_OPTIONS = [
+  { label: 'Anywhere', value: null },
+  { label: '10 mi', value: 10 },
+  { label: '25 mi', value: 25 },
+  { label: '50 mi', value: 50 },
+  { label: '100 mi', value: 100 },
+] as const
+
 type Buddy = BuddySummary & { pace: string }
 
+function formatLocation(buddy: BuddySummary): string | null {
+  if (buddy.city && buddy.state) return `${buddy.city}, ${buddy.state}`
+  return null
+}
+
 function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => void }) {
+  const loc = formatLocation(buddy)
+
   return (
     <li className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5 transition-colors hover:border-primary/40">
       <Link
@@ -47,11 +63,24 @@ function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => voi
           <span className="font-normal text-muted-foreground">@{buddy.username}</span>
         </Link>
         <p className="truncate text-sm text-muted-foreground">{buddy.mood}</p>
-        {buddy.pace && (
-          <span className="mt-1 inline-block rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-foreground">
-            {buddy.pace}
-          </span>
-        )}
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          {buddy.pace && (
+            <span className="inline-block rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] text-foreground">
+              {buddy.pace}
+            </span>
+          )}
+          {loc && (
+            <span className="inline-flex items-center gap-0.5 text-[11px] text-muted-foreground">
+              <MapPin size={10} aria-hidden />
+              {loc}
+            </span>
+          )}
+          {buddy.distanceMiles != null && (
+            <span className="text-[11px] text-muted-foreground">
+              ~{buddy.distanceMiles} mi away
+            </span>
+          )}
+        </div>
       </div>
       <Button
         variant="outline"
@@ -66,7 +95,16 @@ function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => voi
   )
 }
 
-export function BrowseList({ buddies }: { buddies: BuddySummary[] }) {
+export function BrowseList({
+  buddies,
+  radiusMiles,
+  viewerHasLocation,
+}: {
+  buddies: BuddySummary[]
+  radiusMiles: number | null
+  viewerHasLocation: boolean
+}) {
+  const router = useRouter()
   const [query, setQuery] = useState('')
   const [pace, setPace] = useState<string | null>(null)
   const [charmFor, setCharmFor] = useState<Buddy | null>(null)
@@ -89,10 +127,20 @@ export function BrowseList({ buddies }: { buddies: BuddySummary[] }) {
         !q ||
         b.displayName.toLowerCase().includes(q) ||
         b.username.toLowerCase().includes(q) ||
-        (b.mood ?? '').toLowerCase().includes(q)
+        (b.mood ?? '').toLowerCase().includes(q) ||
+        (b.city ?? '').toLowerCase().includes(q) ||
+        (b.state ?? '').toLowerCase().includes(q)
       return matchesPace && matchesQuery
     })
   }, [enriched, query, pace])
+
+  function setRadius(value: number | null) {
+    if (value == null) {
+      router.push('/browse')
+    } else {
+      router.push(`/browse?radius=${value}`)
+    }
+  }
 
   return (
     <div className="mx-auto w-full max-w-2xl px-4 py-6 md:py-10">
@@ -115,11 +163,39 @@ export function BrowseList({ buddies }: { buddies: BuddySummary[] }) {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="search names or moods..."
+              placeholder="search names, moods, or cities..."
               className="pl-9"
               aria-label="Search buddies"
             />
           </div>
+
+          {viewerHasLocation && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Within</span>
+              <div className="flex flex-wrap gap-2">
+                {RADIUS_OPTIONS.map((opt) => (
+                  <Chip
+                    key={opt.label}
+                    selected={radiusMiles === opt.value}
+                    onClick={() => setRadius(opt.value)}
+                  >
+                    {opt.label}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!viewerHasLocation && (
+            <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <MapPin size={12} aria-hidden />
+              <Link href="/onboarding?edit=1" className="underline hover:text-foreground">
+                Add your city
+              </Link>
+              {' '}to filter by distance.
+            </p>
+          )}
+
           {paces.length > 0 && (
             <div className="flex flex-wrap gap-2">
               <Chip selected={pace === null} onClick={() => setPace(null)}>
@@ -145,7 +221,9 @@ export function BrowseList({ buddies }: { buddies: BuddySummary[] }) {
           ) : buddies.length === 0 ? (
             <p className="flex items-center justify-center gap-2 rounded-xl bg-secondary/30 px-4 py-8 text-center text-sm text-muted-foreground">
               <PixelStar size={14} className="text-[var(--mm-accent)]" />
-              No one here yet — be the first to set up your Vibe Page.
+              {radiusMiles != null
+                ? `No one within ${radiusMiles} miles yet — try a wider range or add your city.`
+                : 'No one here yet — be the first to set up your Vibe Page.'}
             </p>
           ) : (
             <p className="flex items-center justify-center gap-2 rounded-xl bg-secondary/30 px-4 py-8 text-center text-sm text-muted-foreground">
