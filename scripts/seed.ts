@@ -6,7 +6,7 @@
  */
 import { config } from 'dotenv'
 config({ path: '.env.local' })
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { db, schema } from '../lib/db'
 
 const BEATS = [
@@ -33,15 +33,16 @@ const PROMPTS = [
 ]
 
 // Demo users mirror the prototype's buddy list (prototype/mm/data.js)
+// Locations: Massachusetts cities at varying distances from Boston (city-center coords).
 const DEMO_USERS = [
-  { username: 'mixtape_kid', displayName: 'Robin', mood: 'rewinding a good tape', intent: 'slow_burn', theme: 'soft_pixel_romance', bio: "I make playlists for feelings that don't have names yet.", interests: ['mixtapes', 'film photography', 'lo-fi beats', 'vinyl records', 'thrifting', 'journaling', 'road trips', 'plants'], reel: [{ url: '/reels/sunset-drive.png', caption: 'golden hour drives' }, { url: '/reels/polaroid-pile.png', caption: 'my polaroid pile' }, { url: '/reels/bedroom-setup.png', caption: 'where the magic happens' }] },
-  { username: 'pixelpetal', displayName: 'Mira', mood: 'drawing tiny worlds', intent: 'slow_burn', theme: 'soft_pixel_romance', bio: 'tiny worlds, big feelings.', interests: ['pixel art', 'lo-fi beats', 'thrifting', 'cozy games'], reel: [{ url: '/reels/bedroom-setup.png', caption: 'studio corner' }] },
-  { username: 'arcadeghost', displayName: 'Dev', mood: 'chasing a high score', intent: 'friend_first', theme: 'arcade_crush', bio: 'one more credit.', interests: ['retro gaming', 'arcades', 'speedrunning', 'synthwave'], reel: [{ url: '/reels/arcade-night.png', caption: 'friday night cabinet' }] },
-  { username: 'noodlebowl', displayName: 'Kai', mood: 'rainy day ramen', intent: 'just_browsing', theme: 'cyber_cafe', bio: 'soup-first worldview.', interests: ['noodle shops', 'journaling', 'plants', 'baking'], reel: [{ url: '/reels/cafe-window.png', caption: 'window seat, always' }] },
-  { username: 'zinequeen', displayName: 'Sam', mood: 'cutting and pasting', intent: 'slow_burn', theme: 'soft_pixel_romance', bio: 'analog collage, digital heart.', interests: ['zines', 'collage', 'thrifting', 'film photography'], reel: [{ url: '/reels/skate-park.png', caption: 'shooting the locals' }] },
-  { username: 'glittercd', displayName: 'Bex', mood: 'shiny and new', intent: 'open_to_dating', theme: 'dreamcast_summer', bio: 'burning CDs and bridges (kidding).', interests: ['vinyl records', 'mixtapes', 'webcore', 'sticker swaps'], reel: [{ url: '/reels/cafe-window.png', caption: 'latte art critic' }] },
-  { username: 'cassettesun', displayName: 'Ari', mood: 'sunny and unbothered', intent: 'co_op_mode', theme: 'dreamcast_summer', bio: 'player two energy.', interests: ['road trips', 'late-night drives', 'indie games', 'cozy games'], reel: [{ url: '/reels/sunset-drive.png', caption: 'golden hour, always' }] },
-  { username: 'softmodem', displayName: 'Lou', mood: 'late night online', intent: 'friend_first', theme: 'late_night_aim', bio: 'away message connoisseur.', interests: ['old forums', 'webcore', 'midi keyboards', 'sci-fi novels'], reel: [{ url: '/reels/polaroid-pile.png', caption: 'the archive' }] },
+  { username: 'mixtape_kid', displayName: 'Robin', mood: 'rewinding a good tape', intent: 'slow_burn', theme: 'soft_pixel_romance', bio: "I make playlists for feelings that don't have names yet.", city: 'Boston', state: 'MA', lat: 42.3601, lng: -71.0589, interests: ['mixtapes', 'film photography', 'lo-fi beats', 'vinyl records', 'thrifting', 'journaling', 'road trips', 'plants'], reel: [{ url: '/reels/sunset-drive.png', caption: 'golden hour drives' }, { url: '/reels/polaroid-pile.png', caption: 'my polaroid pile' }, { url: '/reels/bedroom-setup.png', caption: 'where the magic happens' }] },
+  { username: 'pixelpetal', displayName: 'Mira', mood: 'drawing tiny worlds', intent: 'slow_burn', theme: 'soft_pixel_romance', bio: 'tiny worlds, big feelings.', city: 'Cambridge', state: 'MA', lat: 42.3736, lng: -71.1097, interests: ['pixel art', 'lo-fi beats', 'thrifting', 'cozy games'], reel: [{ url: '/reels/bedroom-setup.png', caption: 'studio corner' }] },
+  { username: 'arcadeghost', displayName: 'Dev', mood: 'chasing a high score', intent: 'friend_first', theme: 'arcade_crush', bio: 'one more credit.', city: 'Somerville', state: 'MA', lat: 42.3876, lng: -71.0995, interests: ['retro gaming', 'arcades', 'speedrunning', 'synthwave'], reel: [{ url: '/reels/arcade-night.png', caption: 'friday night cabinet' }] },
+  { username: 'noodlebowl', displayName: 'Kai', mood: 'rainy day ramen', intent: 'just_browsing', theme: 'cyber_cafe', bio: 'soup-first worldview.', city: 'Brookline', state: 'MA', lat: 42.3318, lng: -71.1212, interests: ['noodle shops', 'journaling', 'plants', 'baking'], reel: [{ url: '/reels/cafe-window.png', caption: 'window seat, always' }] },
+  { username: 'zinequeen', displayName: 'Sam', mood: 'cutting and pasting', intent: 'slow_burn', theme: 'soft_pixel_romance', bio: 'analog collage, digital heart.', city: 'Quincy', state: 'MA', lat: 42.2529, lng: -71.0023, interests: ['zines', 'collage', 'thrifting', 'film photography'], reel: [{ url: '/reels/skate-park.png', caption: 'shooting the locals' }] },
+  { username: 'glittercd', displayName: 'Bex', mood: 'shiny and new', intent: 'open_to_dating', theme: 'dreamcast_summer', bio: 'burning CDs and bridges (kidding).', city: 'Waltham', state: 'MA', lat: 42.3765, lng: -71.2356, interests: ['vinyl records', 'mixtapes', 'webcore', 'sticker swaps'], reel: [{ url: '/reels/cafe-window.png', caption: 'latte art critic' }] },
+  { username: 'cassettesun', displayName: 'Ari', mood: 'sunny and unbothered', intent: 'co_op_mode', theme: 'dreamcast_summer', bio: 'player two energy.', city: 'Salem', state: 'MA', lat: 42.5195, lng: -70.8967, interests: ['road trips', 'late-night drives', 'indie games', 'cozy games'], reel: [{ url: '/reels/sunset-drive.png', caption: 'golden hour, always' }] },
+  { username: 'softmodem', displayName: 'Lou', mood: 'late night online', intent: 'friend_first', theme: 'late_night_aim', bio: 'away message connoisseur.', city: 'Worcester', state: 'MA', lat: 42.2626, lng: -71.8023, interests: ['old forums', 'webcore', 'midi keyboards', 'sci-fi novels'], reel: [{ url: '/reels/polaroid-pile.png', caption: 'the archive' }] },
 ]
 
 async function main() {
@@ -98,6 +99,10 @@ async function main() {
         datingIntent: demo.intent,
         moodStatus: demo.mood,
         profileTheme: demo.theme,
+        city: demo.city,
+        state: demo.state,
+        latitude: demo.lat,
+        longitude: demo.lng,
       })
       .returning()
 
@@ -126,6 +131,23 @@ async function main() {
       })
     }
     console.log(`  seeded ${demo.username}`)
+  }
+
+  console.log('Patching locations on existing demo profiles…')
+  for (const demo of DEMO_USERS) {
+    const updated = await dbc
+      .update(schema.profiles)
+      .set({
+        city: demo.city,
+        state: demo.state,
+        latitude: demo.lat,
+        longitude: demo.lng,
+      })
+      .where(and(eq(schema.profiles.username, demo.username), isNull(schema.profiles.city)))
+      .returning({ username: schema.profiles.username })
+    if (updated.length > 0) {
+      console.log(`  location set for ${demo.username} (${demo.city}, ${demo.state})`)
+    }
   }
 
   console.log('Done.')

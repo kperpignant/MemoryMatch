@@ -17,6 +17,7 @@ import {
   type ThemeId,
 } from '@/lib/memorymatch'
 import { cn } from '@/lib/utils'
+import { LocationPicker, type LocationValue } from '@/components/location/location-picker'
 
 export type OnboardingData = {
   username: string
@@ -29,6 +30,10 @@ export type OnboardingData = {
   bio: string
   mood: string
   interests: string[]
+  city?: string
+  state?: string
+  lat?: number
+  lng?: number
 }
 
 function isAtLeast18(dobIso: string): boolean {
@@ -72,6 +77,17 @@ export function OnboardingWizard({
   const [bio, setBio] = React.useState(initial?.bio ?? '')
   const [mood, setMood] = React.useState(initial?.mood ?? '')
   const [interests, setInterests] = React.useState<string[]>(initial?.interests ?? [])
+  const [location, setLocation] = React.useState<LocationValue | null>(() => {
+    if (initial?.city && initial?.state && initial.lat != null && initial.lng != null) {
+      return {
+        city: initial.city,
+        state: initial.state,
+        lat: initial.lat,
+        lng: initial.lng,
+      }
+    }
+    return null
+  })
 
   // ---- username validation ----
   const usernameError = React.useMemo(() => {
@@ -127,6 +143,9 @@ export function OnboardingWizard({
         bio,
         mood,
         interests,
+        ...(location
+          ? { city: location.city, state: location.state, lat: location.lat, lng: location.lng }
+          : {}),
       })
       return
     }
@@ -173,6 +192,8 @@ export function OnboardingWizard({
             dateOfBirth={dateOfBirth}
             setDateOfBirth={setDateOfBirth}
             dateOfBirthError={dateOfBirthError}
+            location={location}
+            setLocation={setLocation}
           />
         )}
         {step === 1 && (
@@ -236,6 +257,8 @@ function StepName({
   dateOfBirth,
   setDateOfBirth,
   dateOfBirthError,
+  location,
+  setLocation,
 }: {
   username: string
   setUsername: (v: string) => void
@@ -247,6 +270,8 @@ function StepName({
   dateOfBirth: string
   setDateOfBirth: (v: string) => void
   dateOfBirthError: string | null
+  location: LocationValue | null
+  setLocation: (v: LocationValue | null) => void
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = React.useState(false)
@@ -390,6 +415,8 @@ function StepName({
           {dateOfBirthError ?? 'You must be 18 or older to use MemoryMatch.'}
         </p>
       </div>
+
+      <LocationPicker value={location} onChange={setLocation} />
     </div>
   )
 }

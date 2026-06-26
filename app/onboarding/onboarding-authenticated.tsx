@@ -78,6 +78,10 @@ export function OnboardingAuthenticated() {
         mood: data.mood || undefined,
         avatarUrl: data.avatarUrl || undefined,
         interests: data.interests,
+        city: data.city,
+        state: data.state,
+        latitude: data.lat,
+        longitude: data.lng,
       })
 
       if (!result.ok) {

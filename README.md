@@ -11,6 +11,7 @@ Built for the **H01 Hackathon** (Vercel & AWS) · Track 1 — Monetizable B2C ·
 - **Database:** Amazon **Aurora PostgreSQL** (Serverless v2) via **RDS Proxy**, SSL enforced — **Drizzle ORM**
 - **Rate limiting:** Upstash Redis (`@upstash/ratelimit`) — no-ops locally until keys are set
 - **Observability:** `/api/health` (DB-checking); Sentry DSN slot in env
+- **Location:** Google Places API (server-side proxy for city autocomplete + distance browse filter)
 
 ## Getting started
 
@@ -18,6 +19,8 @@ Built for the **H01 Hackathon** (Vercel & AWS) · Track 1 — Monetizable B2C ·
 npm install                 # or pnpm install
 cp .env.example .env.local  # then fill in real keys
 npm run db:push             # create tables on the database in DATABASE_URL
+npm run db:baseline         # if you used db:push first, baseline before db:migrate
+npm run db:migrate          # apply pending SQL migrations (after baseline if needed)
 npm run db:seed             # beats, interests, prompts, 8 demo profiles
 npm run dev
 ```
@@ -28,7 +31,7 @@ The app boots **without** keys (auth middleware passes through, DB-backed routes
 
 | Path | What |
 |---|---|
-| `app/` | Routes: landing, `/onboarding`, `/reel/build`, `/vibe/[username]`, `/browse`, `/chemistry/[matchId]`, `/me`, sign-in/up, `/api/health`, `/api/webhooks/clerk` |
+| `app/` | Routes: landing, `/onboarding`, `/reel/build`, `/vibe/[username]`, `/browse`, `/chemistry/[matchId]`, `/me`, sign-in/up, `/api/health`, `/api/webhooks/clerk`, `/api/location/*` |
 | `components/` | Y2K window system, reel player/builder, onboarding wizard, browse list, shadcn `ui/` |
 | `lib/db/schema.ts` | Full 17-table schema from PRD §19 (users → audit_events) |
 | `lib/db/index.ts` | Lazy postgres.js client (small pool; RDS Proxy does real pooling) |
@@ -42,10 +45,15 @@ The app boots **without** keys (auth middleware passes through, DB-backed routes
 
 ## Environment
 
-Copy `.env.example` → `.env.local`. Placeholders to replace: `DATABASE_URL` (RDS Proxy endpoint), Clerk publishable/secret/webhook keys, Upstash, Blob, Sentry. Table names live only in `lib/db/schema.ts` — adjust there before the first `db:push` if needed.
+Copy `.env.example` → `.env.local`. Placeholders to replace: `DATABASE_URL` (RDS Proxy endpoint), Clerk publishable/secret/webhook keys, Upstash, Blob, Sentry, `GOOGLE_MAPS_API_KEY` (Places API with billing enabled — location picker and distance browse filter no-op when unset). Table names live only in `lib/db/schema.ts` — adjust there before the first `db:push` if needed.
+
+## Location
+
+Users can optionally set a **city-level** location during onboarding (Google Places autocomplete via `/api/location/search` and `/api/location/details`). Coarse lat/lng is stored on `profiles` and shown as `City, ST` on Vibe Pages. Browse supports a server-side distance filter (`/browse?radius=10|25|50|100`) when the viewer has a location set.
 
 ## Database notes
 
+- If the database was first created with `db:push`, run `npm run db:baseline` once before `npm run db:migrate`. Otherwise migrate tries to re-apply `0000` and fails because tables already exist.
 - Match logic is canonical-ordered (`user_a < user_b`) and idempotent; conversation starters are generated deterministically from shared Top 8 interests (no LLM).
 - Blocks are bidirectional: they gate likes/reactions/browse and close existing matches.
 - Account deletion soft-flags `users.status='deleted'` then cascade-purges profile data.

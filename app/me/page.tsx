@@ -4,6 +4,8 @@ import { VibePage, type VibeProfile } from '@/components/vibe/vibe-page'
 import { getMyProfile, getVibePage } from '@/lib/queries'
 import type { IntentId } from '@/lib/memorymatch'
 
+export const dynamic = 'force-dynamic'
+
 export default async function MyVibePage() {
   const me = await getMyProfile()
   if (!me) redirect('/onboarding')
@@ -18,6 +20,8 @@ export default async function MyVibePage() {
     username: data.username,
     displayName: data.displayName,
     mood: data.mood ?? '',
+    location:
+      data.city && data.state ? `${data.city}, ${data.state}` : undefined,
     intents: [toUiId(data.intent) as IntentId],
     blurb: data.bio ?? '',
     interests: data.interests,

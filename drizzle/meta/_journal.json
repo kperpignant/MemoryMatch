@@ -15,6 +15,13 @@
       "when": 1781243581020,
       "tag": "0001_fair_proteus",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782440778635,
+      "tag": "0002_clumsy_maestro",
+      "breakpoints": true
     }
   ]
 }

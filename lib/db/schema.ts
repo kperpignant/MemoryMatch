@@ -10,6 +10,7 @@ import {
   boolean,
   check,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -81,11 +82,18 @@ export const profiles = pgTable(
     softLaunchModeEnabled: boolean('soft_launch_mode_enabled').notNull().default(true),
     moodStatus: text('mood_status'),
     profileTheme: text('profile_theme').notNull().default('soft_pixel_romance'),
+    city: text('city'),
+    state: text('state'), // e.g. 'OR' — coarse city-level location only
+    latitude: doublePrecision('latitude'),
+    longitude: doublePrecision('longitude'),
     status: text('status').notNull().default('active'), // 'active' | 'hidden' | 'suspended'
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('idx_profiles_status').on(t.status)],
+  (t) => [
+    index('idx_profiles_status').on(t.status),
+    index('idx_profiles_lat_lng').on(t.latitude, t.longitude),
+  ],
 )
 
 // 6) media_items — moderation + basic validation metadata

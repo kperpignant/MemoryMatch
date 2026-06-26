@@ -4,6 +4,8 @@ import { VibePage, type VibeProfile } from '@/components/vibe/vibe-page'
 import { getVibePage } from '@/lib/queries'
 import type { IntentId } from '@/lib/memorymatch'
 
+export const dynamic = 'force-dynamic'
+
 export default async function VibeProfilePage({
   params,
 }: {
@@ -21,6 +23,8 @@ export default async function VibeProfilePage({
     displayName: data.displayName,
     avatarUrl: data.avatar ?? undefined,
     mood: data.mood ?? '',
+    location:
+      data.city && data.state ? `${data.city}, ${data.state}` : undefined,
     intents: [toUiId(data.intent) as IntentId],
     blurb: data.bio ?? '',
     interests: data.interests,
