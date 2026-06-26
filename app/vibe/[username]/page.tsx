@@ -4,6 +4,8 @@ import { VibePage, type VibeProfile } from '@/components/vibe/vibe-page'
 import { getVibePage } from '@/lib/queries'
 import type { IntentId } from '@/lib/memorymatch'
 
+export const dynamic = 'force-dynamic'
+
 export default async function VibeProfilePage({
   params,
 }: {

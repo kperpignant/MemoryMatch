@@ -2,6 +2,8 @@ import { SiteHeader } from '@/components/site-header'
 import { BrowseList } from '@/components/browse/browse-list'
 import { getBrowseList, viewerHasLocation } from '@/lib/queries'
 
+export const dynamic = 'force-dynamic'
+
 const VALID_RADIUS = new Set([10, 25, 50, 100])
 
 export default async function BrowsePage({

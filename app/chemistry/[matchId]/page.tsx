@@ -3,6 +3,8 @@ import { SiteHeader } from '@/components/site-header'
 import { ChemistryScreen, type MatchData } from '@/components/chemistry/chemistry-screen'
 import { getChemistry } from '@/lib/queries'
 
+export const dynamic = 'force-dynamic'
+
 export default async function ChemistryPage({
   params,
 }: {
