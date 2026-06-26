@@ -57,7 +57,11 @@
 }
 
 /* ===== Soft Pixel Romance (default theme) ===== */
-:root {
+/* Also exposed as a [data-theme] block (not just :root) so it can override an
+   ancestor theme when set on a nested element — e.g. picking it in the
+   onboarding wizard, or a default-theme profile viewed by a themed visitor. */
+:root,
+[data-theme='soft-pixel-romance'] {
   --background: oklch(0.92 0.025 339);
   --foreground: oklch(0.31 0.06 318);
   --card: oklch(0.93 0.05 86);
@@ -113,11 +117,11 @@
   --secondary: oklch(0.45 0.1 300);
   --secondary-foreground: oklch(0.95 0.02 280);
   --muted: oklch(0.36 0.05 278);
-  --muted-foreground: oklch(0.72 0.04 280);
+  --muted-foreground: oklch(0.8 0.035 280);
   --accent: oklch(0.7 0.13 200);
   --accent-foreground: oklch(0.2 0.04 275);
-  --border: oklch(0.42 0.06 278);
-  --input: oklch(0.4 0.06 278);
+  --border: oklch(0.55 0.06 278);
+  --input: oklch(0.62 0.06 278);
   --ring: oklch(0.72 0.14 230);
   --window: oklch(0.32 0.06 278);
   --window-bar: oklch(0.72 0.14 230);

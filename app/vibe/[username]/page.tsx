@@ -40,7 +40,7 @@ export default async function VibeProfilePage({
   }
 
   return (
-    <main className="min-h-dvh bg-background">
+    <main className="min-h-dvh bg-background text-foreground" data-theme={toUiId(data.theme)}>
       <SiteHeader />
       <VibePage profile={profile} isOwner={data.isOwner} />
     </main>

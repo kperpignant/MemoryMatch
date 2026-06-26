@@ -3,9 +3,13 @@
  * out blocked pairs (either direction) and non-active users/profiles.
  * Server-only — called from server components / route handlers.
  */
+import { auth } from '@clerk/nextjs/server'
 import { and, asc, eq, ne, notInArray, or } from 'drizzle-orm'
 import { requireUser } from '@/lib/auth'
 import { db, schema } from '@/lib/db'
+
+/** Default theme id (matches `:root` in globals.css — no `[data-theme]` block). */
+export const DEFAULT_THEME_ID = 'soft-pixel-romance'
 
 /** User ids hidden from `me` (blocked either direction). */
 async function blockedIdsFor(meId: string): Promise<string[]> {
@@ -268,4 +272,31 @@ export async function getMyProfile() {
     .where(eq(schema.profiles.userId, me.id))
     .limit(1)
   return profile ? { ...profile, displayName: me.displayName } : null
+}
+
+/**
+ * The signed-in user's UI theme id (hyphenated, e.g. `late-night-aim`), or the
+ * default when signed out / no profile yet. Intentionally lightweight and
+ * never throws — safe to call from the root layout on every request (it skips
+ * the lazy-provisioning path in `requireUser`).
+ */
+export async function getMyThemeId(): Promise<string> {
+  try {
+    const { userId: clerkId } = await auth()
+    if (!clerkId) return DEFAULT_THEME_ID
+    const [row] = await db()
+      .select({ theme: schema.profiles.profileTheme })
+      .from(schema.profiles)
+      .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
+      .where(
+        and(
+          eq(schema.users.authProviderId, clerkId),
+          eq(schema.users.status, 'active'),
+        ),
+      )
+      .limit(1)
+    return row?.theme ? row.theme.replace(/_/g, '-') : DEFAULT_THEME_ID
+  } catch {
+    return DEFAULT_THEME_ID
+  }
 }
