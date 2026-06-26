@@ -15,6 +15,7 @@ export default async function ChemistryPage({
   if (!data) notFound()
 
   const match: MatchData = {
+    matchId: data.matchId,
     you: {
       displayName: data.you.displayName,
       reelThumb: data.you.reelThumb ?? '/placeholder.svg',
@@ -25,7 +26,7 @@ export default async function ChemistryPage({
       reelThumb: data.them.reelThumb ?? '/placeholder.svg',
       mood: data.them.mood ?? '',
     },
-    sharedInterests: [],
+    sharedInterests: data.sharedInterests,
     starters: data.starters.map((s) => s.text),
   }
 

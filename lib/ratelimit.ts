@@ -17,6 +17,7 @@ const LIMITS: Record<string, number> = {
   reaction: 30,
   report: 10,
   block: 20,
+  unmatch: 20,
   'profile-write': 20,
   default: 60,
 }
