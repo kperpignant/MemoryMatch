@@ -57,6 +57,7 @@ export function OnboardingWizard({
   initial,
   submitLabel,
   onExit,
+  lockIdentity = false,
 }: {
   onComplete?: (data: OnboardingData) => void
   /** Prefilled values for edit mode (Vibe Page → Edit profile). */
@@ -65,6 +66,9 @@ export function OnboardingWizard({
   submitLabel?: string
   /** When set, the first-step Back button becomes "Exit" (e.g. cancel an edit). */
   onExit?: () => void
+  /** Lock identity fields (username, date of birth) — used when editing an
+   *  existing profile so they can only be set once, at signup. */
+  lockIdentity?: boolean
 }) {
   const [step, setStep] = React.useState(0)
   const [username, setUsername] = React.useState(initial?.username ?? '')
@@ -194,6 +198,7 @@ export function OnboardingWizard({
             dateOfBirthError={dateOfBirthError}
             location={location}
             setLocation={setLocation}
+            lockIdentity={lockIdentity}
           />
         )}
         {step === 1 && (
@@ -259,6 +264,7 @@ function StepName({
   dateOfBirthError,
   location,
   setLocation,
+  lockIdentity,
 }: {
   username: string
   setUsername: (v: string) => void
@@ -272,6 +278,7 @@ function StepName({
   dateOfBirthError: string | null
   location: LocationValue | null
   setLocation: (v: LocationValue | null) => void
+  lockIdentity: boolean
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = React.useState(false)
@@ -363,6 +370,7 @@ function StepName({
             aria-invalid={!!usernameError}
             aria-describedby="username-help"
             autoComplete="off"
+            disabled={lockIdentity}
           />
         </div>
         <p
@@ -372,10 +380,12 @@ function StepName({
             usernameError ? 'text-destructive' : 'text-muted-foreground',
           )}
         >
-          {usernameError ??
-            (username.length >= 3
-              ? 'Looks good — this is your vibe.gg/@handle.'
-              : 'Lowercase letters, numbers, hyphens, underscores.')}
+          {lockIdentity
+            ? 'Your handle is permanent — it can’t be changed.'
+            : (usernameError ??
+              (username.length >= 3
+                ? 'Looks good — this is your vibe.gg/@handle.'
+                : 'Lowercase letters, numbers, hyphens, underscores.'))}
         </p>
       </div>
 
@@ -404,6 +414,7 @@ function StepName({
           aria-invalid={!!dateOfBirthError}
           aria-describedby="dob-help"
           required
+          disabled={lockIdentity}
         />
         <p
           id="dob-help"
@@ -412,7 +423,9 @@ function StepName({
             dateOfBirthError ? 'text-destructive' : 'text-muted-foreground',
           )}
         >
-          {dateOfBirthError ?? 'You must be 18 or older to use MemoryMatch.'}
+          {lockIdentity
+            ? 'Date of birth can’t be changed after signup.'
+            : (dateOfBirthError ?? 'You must be 18 or older to use MemoryMatch.')}
         </p>
       </div>
 
