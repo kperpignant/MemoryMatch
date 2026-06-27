@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { SafetyMenu } from '@/components/safety-menu'
 import { PixelHeart, PixelStar, PixelWave } from '@/components/pixel-icons'
 import { unmatch } from '@/lib/actions/likes'
+import { sendMessage } from '@/lib/actions/messages'
 import { cn } from '@/lib/utils'
 
 export type MatchData = {
@@ -25,11 +26,27 @@ export function ChemistryScreen({ match }: { match: MatchData }) {
   const [draft, setDraft] = useState('')
   const [sent, setSent] = useState(false)
   const [isUnmatching, startUnmatch] = useTransition()
+  const [isSending, startSend] = useTransition()
+  const [sendError, setSendError] = useState<string | null>(null)
 
   function pickStarter(s: string) {
     setStarter(s)
     setDraft(s)
     setSent(false)
+  }
+
+  function handleSendMessage() {
+    const body = draft.trim()
+    if (!body || sent || isSending) return
+    setSendError(null)
+    startSend(async () => {
+      try {
+        await sendMessage({ matchId: match.matchId, body })
+        setSent(true)
+      } catch (err) {
+        setSendError(err instanceof Error ? err.message : 'Could not send message')
+      }
+    })
   }
 
   function handleUnmatch() {
@@ -131,14 +148,19 @@ export function ChemistryScreen({ match }: { match: MatchData }) {
           />
           <div className="flex items-center justify-between gap-2">
             <SafetyMenu name={match.them.displayName} align="start" />
-            <Button
-              disabled={!draft.trim() || sent}
-              onClick={() => setSent(true)}
-              className="font-semibold"
-            >
-              <PixelWave size={15} className="mr-1.5" />
-              {sent ? 'Message sent!' : 'Send message'}
-            </Button>
+            <div className="flex flex-col items-end gap-1">
+              {sendError && (
+                <p className="text-xs text-destructive">{sendError}</p>
+              )}
+              <Button
+                disabled={!draft.trim() || sent || isSending}
+                onClick={handleSendMessage}
+                className="font-semibold"
+              >
+                <PixelWave size={15} className="mr-1.5" />
+                {isSending ? 'Sending…' : sent ? 'Message sent!' : 'Send message'}
+              </Button>
+            </div>
           </div>
         </div>
       </Y2KWindow>

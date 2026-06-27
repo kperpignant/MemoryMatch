@@ -4,7 +4,7 @@
  * Server-only — called from server components / route handlers.
  */
 import { auth } from '@clerk/nextjs/server'
-import { and, asc, desc, eq, inArray, ne, notInArray, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm'
 import { requireUser } from '@/lib/auth'
 import { db, schema } from '@/lib/db'
 
@@ -501,6 +501,112 @@ export async function getMyChemistry(): Promise<MyChemistry> {
   }
 
   return { activeMatch, receivedCharms }
+}
+
+export type ChatMessage = {
+  id: string
+  senderUserId: string
+  body: string
+  createdAt: Date
+  readAt: Date | null
+}
+
+export type ActiveConversation = {
+  matchId: string
+  meId: string
+  partner: {
+    username: string
+    displayName: string
+    reelThumb: string | null
+  }
+  messages: ChatMessage[]
+  unreadCount: number
+}
+
+/**
+ * The signed-in user's active match conversation for chat polling.
+ * When `after` is set, returns only messages newer than that timestamp;
+ * otherwise returns the most recent 50 messages (ascending).
+ */
+export async function getActiveConversation(after?: Date): Promise<ActiveConversation | null> {
+  const me = await requireUser()
+  const dbc = db()
+
+  const [match] = await dbc
+    .select()
+    .from(schema.matches)
+    .where(
+      and(
+        eq(schema.matches.status, 'active'),
+        or(eq(schema.matches.userAId, me.id), eq(schema.matches.userBId, me.id)),
+      ),
+    )
+    .limit(1)
+  if (!match) return null
+
+  const otherId = match.userAId === me.id ? match.userBId : match.userAId
+  const hidden = await blockedIdsFor(me.id)
+  if (hidden.includes(otherId)) return null
+
+  const [partnerRow] = await dbc
+    .select({
+      username: schema.profiles.username,
+      displayName: schema.users.displayName,
+    })
+    .from(schema.profiles)
+    .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
+    .where(eq(schema.profiles.userId, otherId))
+    .limit(1)
+  if (!partnerRow) return null
+
+  const [thumb] = await dbc
+    .select({ url: schema.mediaItems.mediaUrl })
+    .from(schema.memoryReels)
+    .innerJoin(schema.reelFrames, eq(schema.reelFrames.reelId, schema.memoryReels.id))
+    .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
+    .where(and(eq(schema.memoryReels.userId, otherId), eq(schema.memoryReels.isActive, true)))
+    .orderBy(asc(schema.reelFrames.position))
+    .limit(1)
+
+  const messageWhere = after
+    ? and(eq(schema.messages.matchId, match.id), gt(schema.messages.createdAt, after))
+    : eq(schema.messages.matchId, match.id)
+
+  const messageRows = await dbc
+    .select({
+      id: schema.messages.id,
+      senderUserId: schema.messages.senderUserId,
+      body: schema.messages.body,
+      createdAt: schema.messages.createdAt,
+      readAt: schema.messages.readAt,
+    })
+    .from(schema.messages)
+    .where(messageWhere)
+    .orderBy(asc(schema.messages.createdAt))
+    .limit(after ? 100 : 50)
+
+  const [unread] = await dbc
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.messages)
+    .where(
+      and(
+        eq(schema.messages.matchId, match.id),
+        ne(schema.messages.senderUserId, me.id),
+        isNull(schema.messages.readAt),
+      ),
+    )
+
+  return {
+    matchId: match.id,
+    meId: me.id,
+    partner: {
+      username: partnerRow.username,
+      displayName: partnerRow.displayName,
+      reelThumb: thumb?.url ?? null,
+    },
+    messages: messageRows,
+    unreadCount: unread?.count ?? 0,
+  }
 }
 
 /** The 4 provided Profile Beats (seeded). */

@@ -88,6 +88,7 @@ export async function deleteAccount() {
   await dbc
     .delete(schema.likes)
     .where(or(eq(schema.likes.likerUserId, me.id), eq(schema.likes.likedUserId, me.id)))
+  await dbc.delete(schema.messages).where(eq(schema.messages.senderUserId, me.id))
   return { ok: true }
 }
 

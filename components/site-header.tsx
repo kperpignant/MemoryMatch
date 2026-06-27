@@ -44,7 +44,7 @@ export function SiteHeader() {
               className={cn(navLink, isActive('/chemistry') && navLinkActive)}
               aria-current={isActive('/chemistry') ? 'page' : undefined}
             >
-              Charms
+              ReelChemistry
             </Link>
             <Link
               href="/me"
