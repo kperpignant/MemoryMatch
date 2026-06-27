@@ -53,6 +53,7 @@ function BuddyRow({
 }) {
   const loc = formatLocation(buddy)
   const canCharm = Boolean(buddy.reelThumbFrameId)
+  const thumbSrc = buddy.avatarUrl ?? buddy.reelThumb
 
   return (
     <li className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5 transition-colors hover:border-primary/40">
@@ -60,8 +61,8 @@ function BuddyRow({
         href={`/vibe/${buddy.username}`}
         className="relative size-14 shrink-0 overflow-hidden rounded-lg"
       >
-        {buddy.reelThumb ? (
-          <Image src={buddy.reelThumb} alt="" fill className="object-cover" sizes="56px" />
+        {thumbSrc ? (
+          <Image src={thumbSrc} alt="" fill className="object-cover" sizes="56px" />
         ) : (
           <span className="grid size-full place-items-center bg-secondary text-lg font-bold text-secondary-foreground">
             {buddy.displayName.charAt(0)}

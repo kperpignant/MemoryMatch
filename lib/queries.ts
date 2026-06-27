@@ -29,6 +29,7 @@ export type BuddySummary = {
   userId: string
   username: string
   displayName: string
+  avatarUrl: string | null
   mood: string | null
   theme: string
   reelThumb: string | null
@@ -109,6 +110,7 @@ export async function getBrowseList(opts?: BrowseListOptions): Promise<BuddySumm
       userId: schema.users.id,
       username: schema.profiles.username,
       displayName: schema.users.displayName,
+      avatarUrl: schema.profiles.avatarUrl,
       mood: schema.profiles.moodStatus,
       theme: schema.profiles.profileTheme,
       intent: schema.profiles.datingIntent,

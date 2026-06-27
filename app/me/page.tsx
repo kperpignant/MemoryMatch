@@ -19,6 +19,7 @@ export default async function MyVibePage() {
     userId: data.userId,
     username: data.username,
     displayName: data.displayName,
+    avatarUrl: data.avatar ?? undefined,
     mood: data.mood ?? '',
     location:
       data.city && data.state ? `${data.city}, ${data.state}` : undefined,
