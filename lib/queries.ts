@@ -7,6 +7,7 @@ import { auth } from '@clerk/nextjs/server'
 import { and, asc, eq, ne, notInArray, or, sql } from 'drizzle-orm'
 import { requireUser } from '@/lib/auth'
 import { db, schema } from '@/lib/db'
+import { sunCompatibility, type Compatibility } from '@/lib/horoscope'
 
 /** Default theme id (matches `:root` in globals.css — no `[data-theme]` block). */
 export const DEFAULT_THEME_ID = 'soft-pixel-romance'
@@ -156,6 +157,13 @@ export type VibePageData = {
   softLaunch: boolean
   city: string | null
   state: string | null
+  sunSign: string | null
+  moonSign: string | null
+  risingSign: string | null
+  showHoroscope: boolean
+  /** Sun-sign compatibility with the viewer — set only when viewing someone
+   *  else who shows their horoscope and both have a sun sign. */
+  horoscopeMatch: Compatibility | null
   isOwner: boolean
   interests: string[]
   prompts: { question: string; answer: string }[]
@@ -184,6 +192,10 @@ export async function getVibePage(username: string): Promise<VibePageData | null
       softLaunch: schema.profiles.softLaunchModeEnabled,
       city: schema.profiles.city,
       state: schema.profiles.state,
+      sunSign: schema.profiles.sunSign,
+      moonSign: schema.profiles.moonSign,
+      risingSign: schema.profiles.risingSign,
+      showHoroscope: schema.profiles.showHoroscope,
     })
     .from(schema.profiles)
     .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
@@ -247,9 +259,21 @@ export async function getVibePage(username: string): Promise<VibePageData | null
     reel = { beat, frames }
   }
 
+  // Sun-sign compatibility with the viewer (only on someone else's shown horoscope).
+  let horoscopeMatch: Compatibility | null = null
+  if (row.userId !== me.id && row.showHoroscope && row.sunSign) {
+    const [mine] = await dbc
+      .select({ sunSign: schema.profiles.sunSign })
+      .from(schema.profiles)
+      .where(eq(schema.profiles.userId, me.id))
+      .limit(1)
+    if (mine?.sunSign) horoscopeMatch = sunCompatibility(mine.sunSign, row.sunSign)
+  }
+
   const { profileId: _omit, ...pub } = row
   return {
     ...pub,
+    horoscopeMatch,
     isOwner: row.userId === me.id,
     interests: interests.map((i) => i.name),
     prompts,

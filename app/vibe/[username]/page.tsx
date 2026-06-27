@@ -31,6 +31,11 @@ export default async function VibeProfilePage({
     top8: [],
     prompts: data.prompts.map((p) => ({ q: p.question, a: p.answer })),
     reelThumbFrameId: data.reel?.frames[0]?.id,
+    sunSign: data.sunSign,
+    moonSign: data.moonSign,
+    risingSign: data.risingSign,
+    showHoroscope: data.showHoroscope,
+    horoscopeMatch: data.horoscopeMatch,
     reel: data.reel
       ? {
           beatLabel: data.reel.beat?.title ?? undefined,

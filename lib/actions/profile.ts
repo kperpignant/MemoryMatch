@@ -11,6 +11,7 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { db, schema } from '@/lib/db'
+import { ZODIAC_SIGNS } from '@/lib/horoscope'
 import { rateLimit } from '@/lib/ratelimit'
 
 const THEME_IDS = [
@@ -66,6 +67,10 @@ export async function getProfileForEdit() {
     state: p.state ?? '',
     lat: p.latitude ?? undefined,
     lng: p.longitude ?? undefined,
+    sunSign: p.sunSign ?? undefined,
+    moonSign: p.moonSign ?? undefined,
+    risingSign: p.risingSign ?? undefined,
+    showHoroscope: p.showHoroscope ?? false,
   }
 }
 
@@ -100,6 +105,10 @@ const onboardingBase = z.object({
   state: z.string().trim().min(1).max(2).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
+  sunSign: z.enum(ZODIAC_SIGNS).optional(),
+  moonSign: z.enum(ZODIAC_SIGNS).optional(),
+  risingSign: z.enum(ZODIAC_SIGNS).optional(),
+  showHoroscope: z.boolean().optional(),
 })
 
 const onboardingInput = onboardingBase.refine(locationRefine, {
@@ -143,6 +152,10 @@ export async function completeOnboarding(
     state: data.state ?? null,
     latitude: data.latitude ?? null,
     longitude: data.longitude ?? null,
+    sunSign: data.sunSign ?? null,
+    moonSign: data.moonSign ?? null,
+    risingSign: data.risingSign ?? null,
+    showHoroscope: data.showHoroscope ?? false,
     updatedAt: new Date(),
   }
 
@@ -203,6 +216,10 @@ export async function updateProfile(input: z.infer<typeof updateInput>) {
       ...(data.state !== undefined && { state: data.state ?? null }),
       ...(data.latitude !== undefined && { latitude: data.latitude ?? null }),
       ...(data.longitude !== undefined && { longitude: data.longitude ?? null }),
+      ...(data.sunSign !== undefined && { sunSign: data.sunSign ?? null }),
+      ...(data.moonSign !== undefined && { moonSign: data.moonSign ?? null }),
+      ...(data.risingSign !== undefined && { risingSign: data.risingSign ?? null }),
+      ...(data.showHoroscope !== undefined && { showHoroscope: data.showHoroscope }),
       updatedAt: new Date(),
     })
     .where(eq(schema.profiles.id, profile.id))

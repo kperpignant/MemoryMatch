@@ -247,6 +247,34 @@ export function PixelDisc(props: PixelIconProps) {
   )
 }
 
+export function PixelFlower(props: PixelIconProps) {
+  // little daisy with a stem + leaf
+  const px = [
+    [3, 0],
+    [2, 1],
+    [3, 1],
+    [4, 1],
+    [1, 2],
+    [2, 2],
+    [4, 2],
+    [5, 2],
+    [2, 3],
+    [3, 3],
+    [4, 3],
+    [3, 4],
+    [3, 5],
+    [4, 5],
+    [3, 6],
+  ]
+  return (
+    <Base {...props}>
+      {px.map(([x, y]) => (
+        <P key={`${x}-${y}`} x={x} y={y} />
+      ))}
+    </Base>
+  )
+}
+
 export function PixelSparkle(props: PixelIconProps) {
   const px = [
     [3, 0],

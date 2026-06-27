@@ -18,6 +18,7 @@ import {
 } from '@/lib/memorymatch'
 import { cn } from '@/lib/utils'
 import { LocationPicker, type LocationValue } from '@/components/location/location-picker'
+import { ZODIAC_SIGNS, SIGN_META } from '@/lib/horoscope'
 
 export type OnboardingData = {
   username: string
@@ -34,6 +35,10 @@ export type OnboardingData = {
   state?: string
   lat?: number
   lng?: number
+  sunSign?: string
+  moonSign?: string
+  risingSign?: string
+  showHoroscope?: boolean
 }
 
 function isAtLeast18(dobIso: string): boolean {
@@ -92,6 +97,10 @@ export function OnboardingWizard({
     }
     return null
   })
+  const [sunSign, setSunSign] = React.useState<string | undefined>(initial?.sunSign)
+  const [moonSign, setMoonSign] = React.useState<string | undefined>(initial?.moonSign)
+  const [risingSign, setRisingSign] = React.useState<string | undefined>(initial?.risingSign)
+  const [showHoroscope, setShowHoroscope] = React.useState(initial?.showHoroscope ?? true)
 
   // ---- username validation ----
   const usernameError = React.useMemo(() => {
@@ -147,6 +156,10 @@ export function OnboardingWizard({
         bio,
         mood,
         interests,
+        sunSign,
+        moonSign,
+        risingSign,
+        showHoroscope,
         ...(location
           ? { city: location.city, state: location.state, lat: location.lat, lng: location.lng }
           : {}),
@@ -217,6 +230,14 @@ export function OnboardingWizard({
             setBio={setBio}
             mood={mood}
             setMood={setMood}
+            sunSign={sunSign}
+            setSunSign={setSunSign}
+            moonSign={moonSign}
+            setMoonSign={setMoonSign}
+            risingSign={risingSign}
+            setRisingSign={setRisingSign}
+            showHoroscope={showHoroscope}
+            setShowHoroscope={setShowHoroscope}
           />
         )}
         {step === 3 && (
@@ -503,6 +524,14 @@ function StepLook({
   setBio,
   mood,
   setMood,
+  sunSign,
+  setSunSign,
+  moonSign,
+  setMoonSign,
+  risingSign,
+  setRisingSign,
+  showHoroscope,
+  setShowHoroscope,
 }: {
   theme: ThemeId
   setTheme: (t: ThemeId) => void
@@ -510,6 +539,14 @@ function StepLook({
   setBio: (v: string) => void
   mood: string
   setMood: (v: string) => void
+  sunSign?: string
+  setSunSign: (v: string | undefined) => void
+  moonSign?: string
+  setMoonSign: (v: string | undefined) => void
+  risingSign?: string
+  setRisingSign: (v: string | undefined) => void
+  showHoroscope: boolean
+  setShowHoroscope: (v: boolean) => void
 }) {
   return (
     <div className="flex flex-col gap-5">
@@ -589,7 +626,62 @@ function StepLook({
           AIM-style away message. Set the mood.
         </p>
       </div>
+
+      <div className="flex flex-col gap-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-0.5">
+            <Label>Your stars ✨</Label>
+            <p className="text-xs text-muted-foreground">
+              Optional — add your big three.
+            </p>
+          </div>
+          <Switch
+            checked={showHoroscope}
+            onCheckedChange={setShowHoroscope}
+            aria-label="Show horoscope on your Vibe Page"
+            className="mt-1"
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <SignSelect label="Sun ☉" value={sunSign} onChange={setSunSign} />
+          <SignSelect label="Moon ☾" value={moonSign} onChange={setMoonSign} />
+          <SignSelect label="Rising ↑" value={risingSign} onChange={setRisingSign} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {showHoroscope
+            ? 'Your signs show on your Vibe Page.'
+            : 'Hidden for now — flip the switch to show them.'}
+        </p>
+      </div>
     </div>
+  )
+}
+
+function SignSelect({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value?: string
+  onChange: (v: string | undefined) => void
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      <select
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value || undefined)}
+        className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm text-foreground outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+      >
+        <option value="">—</option>
+        {ZODIAC_SIGNS.map((s) => (
+          <option key={s} value={s}>
+            {SIGN_META[s].label}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
 
