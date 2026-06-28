@@ -86,6 +86,11 @@ export const profiles = pgTable(
     state: text('state'), // e.g. 'OR' — coarse city-level location only
     latitude: doublePrecision('latitude'),
     longitude: doublePrecision('longitude'),
+    // Horoscope "big three" — lowercase sign ids (see lib/horoscope.ts); null = unset.
+    sunSign: text('sun_sign'),
+    moonSign: text('moon_sign'),
+    risingSign: text('rising_sign'),
+    showHoroscope: boolean('show_horoscope').notNull().default(false), // opt-in display
     status: text('status').notNull().default('active'), // 'active' | 'hidden' | 'suspended'
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

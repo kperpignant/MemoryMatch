@@ -83,6 +83,10 @@ export function OnboardingAuthenticated() {
           state: data.state,
           latitude: data.lat,
           longitude: data.lng,
+          sunSign: data.sunSign as Parameters<typeof updateProfile>[0]['sunSign'],
+          moonSign: data.moonSign as Parameters<typeof updateProfile>[0]['moonSign'],
+          risingSign: data.risingSign as Parameters<typeof updateProfile>[0]['risingSign'],
+          showHoroscope: data.showHoroscope,
         })
 
         applyThemeSiteWide(data.theme)
@@ -117,6 +121,10 @@ export function OnboardingAuthenticated() {
         state: data.state,
         latitude: data.lat,
         longitude: data.lng,
+        sunSign: data.sunSign as Parameters<typeof completeOnboarding>[0]['sunSign'],
+        moonSign: data.moonSign as Parameters<typeof completeOnboarding>[0]['moonSign'],
+        risingSign: data.risingSign as Parameters<typeof completeOnboarding>[0]['risingSign'],
+        showHoroscope: data.showHoroscope,
       })
 
       if (!result.ok) {

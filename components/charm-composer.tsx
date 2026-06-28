@@ -11,11 +11,31 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { PixelWave, PixelStar, PixelNote, PixelHeart } from '@/components/pixel-icons'
+import {
+  PixelWave,
+  PixelStar,
+  PixelNote,
+  PixelHeart,
+  PixelSparkle,
+  PixelDisc,
+  PixelFlower,
+  PixelSticker,
+} from '@/components/pixel-icons'
 
 export type CharmKind = 'wave' | 'sticker' | 'note'
 
-const STICKERS = ['sparkle', 'heart', 'star', 'rad', 'cozy', 'same!']
+const STICKERS: {
+  id: string
+  label: string
+  Icon: React.ComponentType<{ size?: number; className?: string }>
+}[] = [
+  { id: 'sparkle', label: 'sparkle', Icon: PixelSparkle },
+  { id: 'heart', label: 'heart', Icon: PixelHeart },
+  { id: 'star', label: 'star', Icon: PixelStar },
+  { id: 'rad', label: 'rad', Icon: PixelDisc },
+  { id: 'cozy', label: 'cozy', Icon: PixelFlower },
+  { id: 'same!', label: 'same!', Icon: PixelSticker },
+]
 
 export function CharmComposer({
   open,
@@ -30,7 +50,7 @@ export function CharmComposer({
 }) {
   const [kind, setKind] = useState<CharmKind>('wave')
   const [note, setNote] = useState('')
-  const [sticker, setSticker] = useState(STICKERS[0])
+  const [sticker, setSticker] = useState(STICKERS[0].id)
 
   const tabs: { id: CharmKind; label: string; icon: React.ReactNode }[] = [
     { id: 'wave', label: 'Wave', icon: <PixelWave size={18} /> },
@@ -82,27 +102,34 @@ export function CharmComposer({
         <div className="min-h-24 py-1">
           {kind === 'wave' && (
             <p className="rounded-xl bg-secondary/40 px-4 py-6 text-center text-sm text-foreground">
-              A simple wave lets {name} know you stopped by and liked the vibe. 👋 they&apos;ll
-              see it as a gentle hello.
+              {`A simple wave lets ${name} know you stopped by and liked the vibe — they'll see it as a gentle hello. 👋`}
             </p>
           )}
           {kind === 'sticker' && (
-            <div className="flex flex-wrap gap-2">
-              {STICKERS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSticker(s)}
-                  className={
-                    'rounded-full border-2 px-4 py-2 text-sm transition-colors ' +
-                    (sticker === s
-                      ? 'border-primary bg-primary/10 text-foreground'
-                      : 'border-border bg-card text-muted-foreground hover:border-primary/40')
-                  }
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              {STICKERS.map((s) => {
+                const active = sticker === s.id
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setSticker(s.id)}
+                    aria-pressed={active}
+                    className={
+                      'flex flex-col items-center gap-1 rounded-xl border-2 px-2 py-2.5 text-xs font-medium transition-colors ' +
+                      (active
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border bg-card text-muted-foreground hover:border-primary/40')
+                    }
+                  >
+                    <s.Icon
+                      size={24}
+                      className={active ? 'text-[var(--mm-primary)]' : 'text-foreground'}
+                    />
+                    {s.label}
+                  </button>
+                )
+              })}
             </div>
           )}
           {kind === 'note' && (

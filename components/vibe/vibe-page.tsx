@@ -16,6 +16,7 @@ import {
   PixelDisc,
 } from '@/components/pixel-icons'
 import { INTENTS, type IntentId } from '@/lib/memorymatch'
+import { SIGN_META, isZodiacSign, sunMatchHint, type Compatibility } from '@/lib/horoscope'
 import { likeUser } from '@/lib/actions/likes'
 import { sendReaction } from '@/lib/actions/reactions'
 
@@ -37,6 +38,11 @@ export type VibeProfile = {
   top8: { username: string; displayName: string }[]
   prompts: { q: string; a: string }[]
   reelThumbFrameId?: string
+  sunSign?: string | null
+  moonSign?: string | null
+  risingSign?: string | null
+  showHoroscope?: boolean
+  horoscopeMatch?: Compatibility | null
   alreadyLiked?: boolean
   alreadyCharmed?: boolean
 }
@@ -237,6 +243,41 @@ export function VibePage({
             </Y2KWindow>
           )}
 
+          {/* Horoscope ("big three" + optional compatibility) */}
+          {profile.showHoroscope &&
+            (isZodiacSign(profile.sunSign) ||
+              isZodiacSign(profile.moonSign) ||
+              isZodiacSign(profile.risingSign)) && (
+              <Y2KWindow title="written in the stars">
+                <ul className="flex flex-col gap-2.5">
+                  <HoroscopeRow glyph="☉" label="Sun" sign={profile.sunSign} />
+                  <HoroscopeRow glyph="☾" label="Moon" sign={profile.moonSign} />
+                  <HoroscopeRow glyph="↑" label="Rising" sign={profile.risingSign} />
+                </ul>
+                {isZodiacSign(profile.sunSign) && (
+                  <p className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <PixelStar size={11} className="shrink-0 text-[var(--mm-accent)]" />
+                    {sunMatchHint(profile.sunSign)}
+                  </p>
+                )}
+                {profile.horoscopeMatch && (
+                  <div className="mt-3 rounded-xl border border-primary/30 bg-primary/10 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-foreground">
+                        {profile.horoscopeMatch.label}
+                      </span>
+                      <span className="shrink-0 text-sm font-bold text-[var(--mm-primary)]">
+                        {profile.horoscopeMatch.percent}% match
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {profile.horoscopeMatch.blurb}
+                    </p>
+                  </div>
+                )}
+              </Y2KWindow>
+            )}
+
           {/* Now playing */}
           {profile.nowPlaying && (
             <Y2KWindow title="now playing">
@@ -297,5 +338,37 @@ export function VibePage({
         onSend={handleCharm}
       />
     </div>
+  )
+}
+
+function HoroscopeRow({
+  glyph,
+  label,
+  sign,
+}: {
+  glyph: string
+  label: string
+  sign?: string | null
+}) {
+  if (!isZodiacSign(sign)) return null
+  const meta = SIGN_META[sign]
+  return (
+    <li className="flex items-center gap-3">
+      <span
+        className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary text-base text-secondary-foreground"
+        aria-hidden
+      >
+        {glyph}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+        <span className="block text-sm font-medium text-foreground">
+          {meta.label} {meta.symbol}
+        </span>
+      </span>
+      <span className="shrink-0 text-xs capitalize text-muted-foreground">{meta.element}</span>
+    </li>
   )
 }
