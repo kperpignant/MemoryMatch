@@ -42,7 +42,10 @@ export function ReelPlayer({
   const reduceMotion = usePrefersReducedMotion()
   const [index, setIndex] = React.useState(0)
   const [playing, setPlaying] = React.useState(autoPlay && !reduceMotion)
-  const [audioOn, setAudioOn] = React.useState(false)
+  // Try to start the beat automatically when autoplaying; the browser may block
+  // unmuted autoplay until the user interacts, in which case the audio effect
+  // flips this back off and the tap-to-play button takes over.
+  const [audioOn, setAudioOn] = React.useState(autoPlay && Boolean(beatSrc))
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
 
   const safeFrames = frames.length > 0 ? frames : [{ src: '', caption: '' }]
@@ -58,7 +61,8 @@ export function ReelPlayer({
     return () => clearTimeout(t)
   }, [playing, index, duration, reduceMotion, safeFrames.length])
 
-  // audio control — never autoplay; only play on explicit toggle
+  // audio control — play when audioOn (autoplay-attempted or user-toggled);
+  // pause otherwise. Unmuted autoplay may be blocked by the browser.
   React.useEffect(() => {
     const el = audioRef.current
     if (!el) return
@@ -71,6 +75,29 @@ export function ReelPlayer({
       el.pause()
     }
   }, [audioOn, beatStartSec])
+
+  // If unmuted autoplay was blocked, start the beat on the visitor's first
+  // interaction with the page — unless they've already muted it themselves.
+  const userMutedRef = React.useRef(false)
+  React.useEffect(() => {
+    if (!autoPlay || !beatSrc) return
+    const onGesture = () => {
+      if (!userMutedRef.current) setAudioOn(true)
+      cleanup()
+    }
+    const cleanup = () => {
+      window.removeEventListener('pointerdown', onGesture)
+      window.removeEventListener('keydown', onGesture)
+    }
+    window.addEventListener('pointerdown', onGesture)
+    window.addEventListener('keydown', onGesture)
+    return cleanup
+  }, [autoPlay, beatSrc])
+
+  function toggleAudio() {
+    userMutedRef.current = audioOn // turning it off counts as an explicit mute
+    setAudioOn((a) => !a)
+  }
 
   function prev() {
     setIndex((i) => (i - 1 + safeFrames.length) % safeFrames.length)
@@ -161,7 +188,7 @@ export function ReelPlayer({
           <Button
             variant={audioOn ? 'secondary' : 'outline'}
             size="sm"
-            onClick={() => setAudioOn((a) => !a)}
+            onClick={toggleAudio}
             aria-pressed={audioOn}
             className="gap-1.5"
           >
@@ -183,7 +210,7 @@ export function ReelPlayer({
           ref={audioRef}
           src={beatSrc}
           loop
-          preload="none"
+          preload={autoPlay ? 'auto' : 'none'}
           onTimeUpdate={(e) => {
             // Loop within the ~15s snippet window instead of the whole track.
             const el = e.currentTarget
