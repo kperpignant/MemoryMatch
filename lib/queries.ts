@@ -285,6 +285,8 @@ export async function getVibePage(username: string): Promise<VibePageData | null
       .where(eq(schema.profiles.userId, me.id))
       .limit(1)
     if (mine?.sunSign) horoscopeMatch = sunCompatibility(mine.sunSign, row.sunSign)
+  }
+
   // Whether the viewer has already liked / charmed this person (so the UI can
   // reflect persisted state on revisit instead of always rendering "un-liked").
   let viewerHasLiked = false
