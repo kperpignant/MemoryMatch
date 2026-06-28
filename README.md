@@ -8,7 +8,7 @@ Built for the **H01 Hackathon** (Vercel & AWS) · Track 1 — Monetizable B2C ·
 
 - **Next.js 16** (App Router) + React 19 + TypeScript + Tailwind 4 + shadcn/ui — deployed on **Vercel**
 - **Auth:** Clerk (sign-in/up pages, route-protecting middleware, user-sync webhook)
-- **Database:** Amazon **Aurora PostgreSQL** (Serverless v2) via **RDS Proxy**, SSL enforced — **Drizzle ORM**
+- **Database:** Amazon **Aurora PostgreSQL** (Serverless v2) — connects directly to the Aurora cluster endpoint over SSL (RDS Proxy is a documented next step) — **Drizzle ORM**
 - **Rate limiting:** Upstash Redis (`@upstash/ratelimit`) — no-ops locally until keys are set
 - **Observability:** `/api/health` (DB-checking); Sentry DSN slot in env
 - **Location:** Google Places API (server-side proxy for city autocomplete + distance browse filter)
@@ -34,7 +34,7 @@ The app boots **without** keys (auth middleware passes through, DB-backed routes
 | `app/` | Routes: landing, `/onboarding`, `/reel/build`, `/vibe/[username]`, `/browse`, `/chemistry/[matchId]`, `/me`, sign-in/up, `/api/health`, `/api/webhooks/clerk`, `/api/location/*` |
 | `components/` | Y2K window system, reel player/builder, onboarding wizard, browse list, shadcn `ui/` |
 | `lib/db/schema.ts` | Full 17-table schema from PRD §19 (users → audit_events) |
-| `lib/db/index.ts` | Lazy postgres.js client (small pool; RDS Proxy does real pooling) |
+| `lib/db/index.ts` | Lazy postgres.js client (small pool; direct Aurora cluster endpoint) |
 | `lib/actions/` | Server actions: like → match-on-insert + starters, block/unblock, report, delete account |
 | `lib/auth.ts` | Session → `users` row resolution (never trust client ids) |
 | `lib/ratelimit.ts` | Per-user/per-action limits |
@@ -45,7 +45,7 @@ The app boots **without** keys (auth middleware passes through, DB-backed routes
 
 ## Environment
 
-Copy `.env.example` → `.env.local`. Placeholders to replace: `DATABASE_URL` (RDS Proxy endpoint), Clerk publishable/secret/webhook keys, Upstash, Blob, Sentry, `GOOGLE_MAPS_API_KEY` (Places API with billing enabled — location picker and distance browse filter no-op when unset). Table names live only in `lib/db/schema.ts` — adjust there before the first `db:push` if needed.
+Copy `.env.example` → `.env.local`. Placeholders to replace: `DATABASE_URL` (Aurora cluster endpoint), Clerk publishable/secret/webhook keys, Upstash, Blob, Sentry, `GOOGLE_MAPS_API_KEY` (Places API with billing enabled — location picker and distance browse filter no-op when unset). Table names live only in `lib/db/schema.ts` — adjust there before the first `db:push` if needed.
 
 ## Location
 
