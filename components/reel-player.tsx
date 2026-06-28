@@ -4,6 +4,7 @@ import * as React from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Slider } from '@/components/ui/slider'
 import { PixelDisc } from '@/components/pixel-icons'
 import { Pause, Play, ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react'
 
@@ -19,7 +20,7 @@ export type ReelFrame = {
 
 /**
  * ReelPlayer — Memory Reel slideshow (taller 4:5 / 3:4 on mobile, 16:9 from md up).
- * - Audio NEVER autoplays and starts muted; a button toggles the background track.
+ * - Background beat plays only while the reel is playing; mute silences it without stopping playback.
  * - Respects prefers-reduced-motion: no auto-advance, no crossfade animation.
  * - Always offers pause + manual prev/next.
  */
@@ -45,11 +46,13 @@ export function ReelPlayer({
   const reduceMotion = usePrefersReducedMotion()
   const [index, setIndex] = React.useState(0)
   const [playing, setPlaying] = React.useState(autoPlay && !reduceMotion)
-  // Try to start the beat automatically when autoplaying; the browser may block
-  // unmuted autoplay until the user interacts, in which case the audio effect
-  // flips this back off and the tap-to-play button takes over.
-  const [audioOn, setAudioOn] = React.useState(autoPlay && Boolean(beatSrc))
+  const [beatMuted, setBeatMuted] = React.useState(false)
+  const [volume, setVolume] = React.useState(60)
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
+  const playingRef = React.useRef(playing)
+  playingRef.current = playing
+
+  const shouldPlayAudio = playing && Boolean(beatSrc)
 
   const safeFrames = frames.length > 0 ? frames : [{ src: '', caption: '' }]
   const current = safeFrames[Math.min(index, safeFrames.length - 1)]
@@ -64,28 +67,41 @@ export function ReelPlayer({
     return () => clearTimeout(t)
   }, [playing, index, duration, reduceMotion, safeFrames.length])
 
-  // audio control — play when audioOn (autoplay-attempted or user-toggled);
-  // pause otherwise. Unmuted autoplay may be blocked by the browser.
+  // Play/pause the beat with the reel; mute only affects audibility, not playback position.
   React.useEffect(() => {
     const el = audioRef.current
     if (!el) return
-    if (audioOn) {
-      el.muted = false
-      // Start the chosen snippet; loop back to it rather than to 0.
-      if (Math.abs(el.currentTime - beatStartSec) > 1) el.currentTime = beatStartSec
-      el.play().catch(() => setAudioOn(false))
+
+    el.volume = volume / 100
+
+    if (shouldPlayAudio) {
+      if (el.paused && Math.abs(el.currentTime - beatStartSec) > 1) {
+        el.currentTime = beatStartSec
+      }
+      const wantAudible = !beatMuted && volume > 0
+      el.muted = !wantAudible
+      el.play().catch(() => {
+        // Unmuted autoplay blocked — keep the track running muted until a gesture.
+        if (wantAudible) {
+          el.muted = true
+          el.play().catch(() => {})
+        }
+      })
     } else {
       el.pause()
     }
-  }, [audioOn, beatStartSec])
+  }, [shouldPlayAudio, beatStartSec, beatMuted, volume])
 
-  // If unmuted autoplay was blocked, start the beat on the visitor's first
-  // interaction with the page — unless they've already muted it themselves.
+  // If unmuted autoplay was blocked, unmute on the visitor's first interaction
+  // with the page — unless they've muted the beat themselves.
   const userMutedRef = React.useRef(false)
   React.useEffect(() => {
     if (!autoPlay || !beatSrc) return
     const onGesture = () => {
-      if (!userMutedRef.current) setAudioOn(true)
+      if (!userMutedRef.current && playingRef.current) {
+        const el = audioRef.current
+        if (el && !el.paused) el.muted = false
+      }
       cleanup()
     }
     const cleanup = () => {
@@ -97,9 +113,11 @@ export function ReelPlayer({
     return cleanup
   }, [autoPlay, beatSrc])
 
-  function toggleAudio() {
-    userMutedRef.current = audioOn // turning it off counts as an explicit mute
-    setAudioOn((a) => !a)
+  function toggleBeatMute() {
+    setBeatMuted((muted) => {
+      userMutedRef.current = !muted
+      return !muted
+    })
   }
 
   function prev() {
@@ -174,7 +192,7 @@ export function ReelPlayer({
       </div>
 
       {/* controls */}
-      <div className={cn('flex items-center justify-between gap-2', edgeToEdge && 'px-4')}>
+      <div className={cn('flex flex-col gap-2', edgeToEdge && 'px-4')}>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon-sm" onClick={prev} aria-label="Previous frame">
             <ChevronLeft />
@@ -194,17 +212,30 @@ export function ReelPlayer({
           </Button>
         </div>
 
-        {beatLabel && (
-          <Button
-            variant={audioOn ? 'secondary' : 'outline'}
-            size="sm"
-            onClick={toggleAudio}
-            aria-pressed={audioOn}
-            className="gap-1.5"
-          >
-            {audioOn ? <Volume2 /> : <VolumeX />}
-            <span className="max-w-28 truncate">{beatLabel}</span>
-          </Button>
+        {beatSrc && (
+          <div className="flex items-center gap-3">
+            <Button
+              variant={beatMuted ? 'outline' : 'secondary'}
+              size="sm"
+              onClick={toggleBeatMute}
+              aria-pressed={!beatMuted}
+              className="shrink-0 gap-1.5"
+            >
+              {beatMuted ? <VolumeX /> : <Volume2 />}
+              {beatLabel ? (
+                <span className="max-w-28 truncate">{beatLabel}</span>
+              ) : null}
+            </Button>
+            <Slider
+              className="min-w-0 flex-1"
+              min={0}
+              max={100}
+              step={1}
+              value={[volume]}
+              onValueChange={(v) => setVolume(Array.isArray(v) ? v[0] : v)}
+              aria-label="Reel volume"
+            />
+          </div>
         )}
       </div>
 
