@@ -18,7 +18,7 @@ export type ReelFrame = {
 }
 
 /**
- * ReelPlayer — Memory Reel slideshow (taller 3:4 frame on mobile, 4:5 on small screens).
+ * ReelPlayer — Memory Reel slideshow (taller 4:5 / 3:4 on mobile, 16:9 from md up).
  * - Audio NEVER autoplays and starts muted; a button toggles the background track.
  * - Respects prefers-reduced-motion: no auto-advance, no crossfade animation.
  * - Always offers pause + manual prev/next.
@@ -113,7 +113,7 @@ export function ReelPlayer({
     <div className={cn('flex flex-col gap-2', className)}>
       <div
         className={cn(
-          'relative aspect-[4/5] w-full overflow-hidden bg-foreground/5 sm:aspect-[3/4]',
+          'relative aspect-[4/5] w-full overflow-hidden bg-foreground/5 sm:aspect-[3/4] md:aspect-video',
           edgeToEdge
             ? 'rounded-none border-0'
             : 'rounded-xl border border-border',
@@ -134,7 +134,7 @@ export function ReelPlayer({
                 src={frame.src || '/placeholder.svg'}
                 alt={frame.caption || `Reel frame ${i + 1}`}
                 fill
-                sizes="100vw"
+                sizes="(min-width: 768px) 42rem, 100vw"
                 className="object-cover"
               />
             ) : (

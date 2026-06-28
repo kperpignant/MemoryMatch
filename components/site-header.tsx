@@ -21,16 +21,16 @@ export function SiteHeader() {
     pathname === href || pathname.startsWith(`${href}/`)
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 py-3">
-        <Link href="/" className="flex min-w-0 items-center gap-2">
+      <div className="mx-auto flex w-full max-w-5xl items-center gap-3 px-4 py-3 sm:gap-4">
+        <Link href="/" className="flex shrink-0 items-center gap-2.5">
           <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground">
             <PixelHeart size={16} />
           </span>
-          <span className="truncate font-heading text-base font-bold tracking-tight text-foreground sm:text-lg">
+          <span className="hidden truncate font-heading text-base font-bold tracking-tight text-foreground sm:inline sm:text-lg">
             MemoryMatch
           </span>
         </Link>
-        <nav className="flex shrink-0 items-center gap-0.5 text-sm sm:gap-1">
+        <nav className="ml-auto flex min-w-0 items-center gap-0.5 text-sm sm:gap-1">
           <Link
             href="/browse"
             className={cn(navLink, isActive('/browse') && navLinkActive)}
@@ -44,14 +44,16 @@ export function SiteHeader() {
               className={cn(navLink, isActive('/chemistry') && navLinkActive)}
               aria-current={isActive('/chemistry') ? 'page' : undefined}
             >
-              ReelChemistry
+              <span className="sm:hidden">Chemistry</span>
+              <span className="hidden sm:inline">ReelChemistry</span>
             </Link>
             <Link
               href="/me"
               className={cn(navLink, isActive('/me') && navLinkActive)}
               aria-current={isActive('/me') ? 'page' : undefined}
             >
-              My page
+              <span className="sm:hidden">Me</span>
+              <span className="hidden sm:inline">My page</span>
             </Link>
             <button
               type="button"
