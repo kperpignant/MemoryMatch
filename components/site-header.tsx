@@ -55,6 +55,14 @@ export function SiteHeader() {
               <span className="sm:hidden">Me</span>
               <span className="hidden sm:inline">My page</span>
             </Link>
+            <Link
+              href="/settings"
+              className={cn(navLink, isActive('/settings') && navLinkActive)}
+              aria-current={isActive('/settings') ? 'page' : undefined}
+            >
+              <span className="max-md:hidden">Settings</span>
+              <span className="md:hidden">Set</span>
+            </Link>
             <button
               type="button"
               className={navLink}

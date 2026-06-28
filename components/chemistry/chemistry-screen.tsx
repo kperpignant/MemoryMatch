@@ -10,12 +10,19 @@ import { SafetyMenu } from '@/components/safety-menu'
 import { PixelHeart, PixelStar, PixelWave } from '@/components/pixel-icons'
 import { unmatch } from '@/lib/actions/likes'
 import { sendMessage } from '@/lib/actions/messages'
+import { useSafetyActions } from '@/components/safety-actions'
 import { cn } from '@/lib/utils'
 
 export type MatchData = {
   matchId: string
   you: { displayName: string; reelThumb: string }
-  them: { username: string; displayName: string; reelThumb: string; mood: string }
+  them: {
+    userId: string
+    username: string
+    displayName: string
+    reelThumb: string
+    mood: string
+  }
   sharedInterests: string[]
   starters: string[]
 }
@@ -28,6 +35,8 @@ export function ChemistryScreen({ match }: { match: MatchData }) {
   const [isUnmatching, startUnmatch] = useTransition()
   const [isSending, startSend] = useTransition()
   const [sendError, setSendError] = useState<string | null>(null)
+  const { handleBlock, handleReport, feedback: safetyFeedback, isPending: safetyPending } =
+    useSafetyActions(match.them.userId, { onBlocked: () => router.push('/browse') })
 
   function pickStarter(s: string) {
     setStarter(s)
@@ -147,7 +156,13 @@ export function ChemistryScreen({ match }: { match: MatchData }) {
             placeholder={`Send ${match.them.displayName} a first message...`}
           />
           <div className="flex items-center justify-between gap-2">
-            <SafetyMenu name={match.them.displayName} align="start" />
+            <SafetyMenu
+              name={match.them.displayName}
+              align="start"
+              onBlock={handleBlock}
+              onReport={handleReport}
+              disabled={safetyPending}
+            />
             <div className="flex flex-col items-end gap-1">
               {sendError && (
                 <p className="text-xs text-destructive">{sendError}</p>
@@ -162,6 +177,9 @@ export function ChemistryScreen({ match }: { match: MatchData }) {
               </Button>
             </div>
           </div>
+          {safetyFeedback && (
+            <p className="text-sm text-muted-foreground">{safetyFeedback}</p>
+          )}
         </div>
       </Y2KWindow>
 

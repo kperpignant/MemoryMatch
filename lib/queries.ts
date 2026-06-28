@@ -331,8 +331,22 @@ export type ChemistryData = {
   matchId: string
   starters: { id: string; text: string; context: string | null }[]
   sharedInterests: string[]
-  you: { username: string; displayName: string; mood: string | null; theme: string; reelThumb: string | null }
-  them: { username: string; displayName: string; mood: string | null; theme: string; reelThumb: string | null }
+  you: {
+    userId: string
+    username: string
+    displayName: string
+    mood: string | null
+    theme: string
+    reelThumb: string | null
+  }
+  them: {
+    userId: string
+    username: string
+    displayName: string
+    mood: string | null
+    theme: string
+    reelThumb: string | null
+  }
 }
 
 /** Match page data — only visible to the two members of an active match. */
@@ -371,7 +385,7 @@ export async function getChemistry(matchId: string): Promise<ChemistryData | nul
       .where(and(eq(schema.memoryReels.userId, userId), eq(schema.memoryReels.isActive, true)))
       .orderBy(asc(schema.reelFrames.position))
       .limit(1)
-    return { ...r, reelThumb: thumb?.url ?? null }
+    return { userId, ...r, reelThumb: thumb?.url ?? null }
   }
 
   const [you, them] = await Promise.all([card(me.id), card(otherId)])
@@ -730,6 +744,28 @@ export async function viewerHasLocation(): Promise<boolean> {
     .where(eq(schema.profiles.userId, me.id))
     .limit(1)
   return row?.latitude != null && row?.longitude != null
+}
+
+export type BlockedUserRow = {
+  userId: string
+  displayName: string
+  username: string
+}
+
+/** Users the signed-in member has blocked (for Settings). */
+export async function getBlockedUsers(): Promise<BlockedUserRow[]> {
+  const me = await requireUser()
+  return db()
+    .select({
+      userId: schema.users.id,
+      displayName: schema.users.displayName,
+      username: schema.profiles.username,
+    })
+    .from(schema.blocks)
+    .innerJoin(schema.users, eq(schema.blocks.blockedUserId, schema.users.id))
+    .innerJoin(schema.profiles, eq(schema.profiles.userId, schema.users.id))
+    .where(eq(schema.blocks.blockerUserId, me.id))
+    .orderBy(asc(schema.users.displayName))
 }
 
 /**

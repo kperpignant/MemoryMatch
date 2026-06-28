@@ -19,6 +19,7 @@ import { INTENTS, type IntentId } from '@/lib/memorymatch'
 import { SIGN_META, isZodiacSign, sunMatchHint, type Compatibility } from '@/lib/horoscope'
 import { likeUser } from '@/lib/actions/likes'
 import { sendReaction } from '@/lib/actions/reactions'
+import { useSafetyActions } from '@/components/safety-actions'
 
 export type VibeProfile = {
   userId: string
@@ -62,6 +63,8 @@ export function VibePage({
   )
   const [isLiking, startLikeTransition] = useTransition()
   const [likeError, setLikeError] = useState<string | null>(null)
+  const { handleBlock, handleReport, feedback: safetyFeedback, isPending: safetyPending } =
+    useSafetyActions(profile.userId)
 
   const intentLabels = profile.intents
     .map((id) => INTENTS.find((i) => i.id === id)?.label)
@@ -133,7 +136,12 @@ export function VibePage({
                     {profile.displayName}
                   </h1>
                   {!isOwner && (
-                    <SafetyMenu name={profile.displayName} />
+                    <SafetyMenu
+                      name={profile.displayName}
+                      onBlock={handleBlock}
+                      onReport={handleReport}
+                      disabled={safetyPending}
+                    />
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">
@@ -162,6 +170,12 @@ export function VibePage({
               </div>
             )}
           </Y2KWindow>
+
+          {!isOwner && safetyFeedback && (
+            <p className="rounded-lg bg-secondary px-3 py-2 text-sm text-foreground">
+              {safetyFeedback}
+            </p>
+          )}
 
           {/* Memory Reel */}
           <Y2KWindow title="memory reel" bodyClassName="p-0 pb-4">
@@ -241,6 +255,9 @@ export function VibePage({
                 </Button>
                 <Button variant="outline" className="w-full" onClick={() => router.push('/reel/build')}>
                   Edit memory reel
+                </Button>
+                <Button variant="outline" className="w-full" onClick={() => router.push('/settings')}>
+                  Settings
                 </Button>
               </div>
             </Y2KWindow>

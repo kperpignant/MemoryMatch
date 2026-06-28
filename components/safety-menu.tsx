@@ -25,11 +25,13 @@ export function SafetyMenu({
   onReport,
   onBlock,
   align = 'end',
+  disabled = false,
 }: {
   name?: string
   onReport?: (reason: string) => void
   onBlock?: () => void
   align?: 'start' | 'end'
+  disabled?: boolean
 }) {
   const [mode, setMode] = useState<Mode>(null)
   const [reason, setReason] = useState('Not feeling it')
@@ -52,6 +54,7 @@ export function SafetyMenu({
               size="icon"
               aria-label="Safety and options"
               className="rounded-full"
+              disabled={disabled}
             />
           }
         >
@@ -96,10 +99,11 @@ export function SafetyMenu({
             ))}
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setMode(null)}>
+            <Button variant="ghost" onClick={() => setMode(null)} disabled={disabled}>
               Never mind
             </Button>
             <Button
+              disabled={disabled}
               onClick={() => {
                 onReport?.(reason)
                 setMode(null)
@@ -121,11 +125,12 @@ export function SafetyMenu({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setMode(null)}>
+            <Button variant="ghost" onClick={() => setMode(null)} disabled={disabled}>
               Cancel
             </Button>
             <Button
               variant="destructive"
+              disabled={disabled}
               onClick={() => {
                 onBlock?.()
                 setMode(null)

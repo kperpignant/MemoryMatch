@@ -21,6 +21,7 @@ export default async function ChemistryPage({
       reelThumb: data.you.reelThumb ?? '/placeholder.svg',
     },
     them: {
+      userId: data.them.userId,
       username: data.them.username,
       displayName: data.them.displayName,
       reelThumb: data.them.reelThumb ?? '/placeholder.svg',
