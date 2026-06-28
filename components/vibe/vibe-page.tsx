@@ -164,6 +164,7 @@ export function VibePage({
               beatLabel={profile.reel.beatLabel}
               beatSrc={profile.reel.beatSrc}
               beatStartSec={profile.reel.beatStartSec}
+              autoPlay
             />
           </Y2KWindow>
 
