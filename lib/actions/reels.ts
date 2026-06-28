@@ -20,6 +20,8 @@ const frameInput = z.object({
 
 const saveReelInput = z.object({
   beatId: z.string().uuid().nullable().optional(),
+  /** Start offset (seconds) of the chosen beat snippet. */
+  beatStartSec: z.number().int().min(0).max(600).default(0),
   frames: z.array(frameInput).min(1).max(12),
 })
 
@@ -47,7 +49,12 @@ export async function saveReel(input: z.infer<typeof saveReelInput>) {
 
   await dbc
     .update(schema.memoryReels)
-    .set({ beatId: data.beatId ?? null, isActive: true, updatedAt: new Date() })
+    .set({
+      beatId: data.beatId ?? null,
+      beatStartSec: data.beatStartSec,
+      isActive: true,
+      updatedAt: new Date(),
+    })
     .where(eq(schema.memoryReels.id, reel.id))
 
   // Replace frames wholesale (builder always submits the full ordered list).

@@ -127,6 +127,8 @@ export const memoryReels = pgTable(
     title: text('title'),
     vibe: text('vibe'),
     beatId: uuid('beat_id').references(() => beats.id, { onDelete: 'set null' }),
+    /** Start offset (seconds) of the chosen beat snippet that plays behind the reel. */
+    beatStartSec: integer('beat_start_sec').notNull().default(0),
     isActive: boolean('is_active').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

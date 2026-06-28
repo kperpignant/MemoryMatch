@@ -32,7 +32,7 @@ export type VibeProfile = {
   intents: IntentId[]
   blurb: string
   nowPlaying?: string
-  reel: { frames: ReelFrame[]; beatLabel?: string; beatSrc?: string }
+  reel: { frames: ReelFrame[]; beatLabel?: string; beatSrc?: string; beatStartSec?: number }
   interests: string[]
   top8: { username: string; displayName: string }[]
   prompts: { q: string; a: string }[]
@@ -163,6 +163,7 @@ export function VibePage({
               frames={profile.reel.frames}
               beatLabel={profile.reel.beatLabel}
               beatSrc={profile.reel.beatSrc}
+              beatStartSec={profile.reel.beatStartSec}
             />
           </Y2KWindow>
 

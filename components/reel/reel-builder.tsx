@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { Y2KWindow } from '@/components/y2k-window'
@@ -9,11 +9,27 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
 import { PixelDisc, PixelStar } from '@/components/pixel-icons'
-import { Plus, Trash2, ChevronUp, ChevronDown, Save, Check, Upload, Loader2 } from 'lucide-react'
+import {
+  Plus,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  Save,
+  Check,
+  Upload,
+  Loader2,
+  Play,
+  Square,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveReel } from '@/lib/actions/reels'
 
 type Beat = { id: string; title: string; vibe: string; audioUrl: string }
+type SavedReel = {
+  beatId: string | null
+  beatStartSec: number
+  frames: { src: string; caption: string; duration: number }[]
+}
 
 // Sample clips a user could pull from their camera roll.
 const GALLERY = [
@@ -30,13 +46,18 @@ type EditorFrame = ReelFrame & { id: string }
 let uid = 0
 const newId = () => `f${++uid}`
 
-export function ReelBuilder({ beats }: { beats: Beat[] }) {
+export function ReelBuilder({ beats, reel }: { beats: Beat[]; reel?: SavedReel | null }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [frames, setFrames] = useState<EditorFrame[]>([
-    { id: newId(), src: GALLERY[0], caption: 'golden hour drives', duration: 4 },
-  ])
-  const [beatId, setBeatId] = useState<string | null>(beats[0]?.id ?? null)
+  // Hydrate from the saved reel so edits reload from the DB rather than reset
+  // to defaults; fall back to a starter frame only for a brand-new reel.
+  const [frames, setFrames] = useState<EditorFrame[]>(() =>
+    reel && reel.frames.length > 0
+      ? reel.frames.map((f) => ({ id: newId(), src: f.src, caption: f.caption, duration: f.duration }))
+      : [{ id: newId(), src: GALLERY[0], caption: 'golden hour drives', duration: 4 }],
+  )
+  const [beatId, setBeatId] = useState<string | null>(reel?.beatId ?? beats[0]?.id ?? null)
+  const [beatStartSec, setBeatStartSec] = useState<number>(reel?.beatStartSec ?? 0)
   const [selected, setSelected] = useState(0)
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -96,6 +117,7 @@ export function ReelBuilder({ beats }: { beats: Beat[] }) {
       try {
         await saveReel({
           beatId: beatId ?? undefined,
+          beatStartSec,
           frames: frames.map((f) => ({
             mediaUrl: f.src,
             caption: f.caption || undefined,
@@ -299,7 +321,11 @@ export function ReelBuilder({ beats }: { beats: Beat[] }) {
                 <button
                   key={b.id}
                   type="button"
-                  onClick={() => setBeatId(b.id)}
+                  onClick={() => {
+                    setBeatId(b.id)
+                    setBeatStartSec(0)
+                    setSaved(false)
+                  }}
                   className={cn(
                     'flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-colors',
                     beatId === b.id
@@ -324,13 +350,30 @@ export function ReelBuilder({ beats }: { beats: Beat[] }) {
                 </button>
               ))}
             </div>
+
+            {selectedBeat && (
+              <SnippetPicker
+                key={selectedBeat.id}
+                src={selectedBeat.audioUrl}
+                value={beatStartSec}
+                onChange={(s) => {
+                  setBeatStartSec(s)
+                  setSaved(false)
+                }}
+              />
+            )}
           </Y2KWindow>
         </div>
 
         {/* PREVIEW (sticky on desktop) */}
         <div className="lg:sticky lg:top-6 lg:self-start">
           <Y2KWindow title="live preview" accent>
-            <ReelPlayer frames={frames} beatLabel={selectedBeat?.title} />
+            <ReelPlayer
+              frames={frames}
+              beatLabel={selectedBeat?.title}
+              beatSrc={selectedBeat?.audioUrl}
+              beatStartSec={beatStartSec}
+            />
             <div className="mt-4 flex flex-col gap-2">
               {saveError && (
                 <p className="rounded-lg bg-destructive/10 px-3 py-2 text-center text-sm text-destructive">
@@ -363,6 +406,110 @@ export function ReelBuilder({ beats }: { beats: Beat[] }) {
           </Y2KWindow>
         </div>
       </div>
+    </div>
+  )
+}
+
+/** Length of the snippet that plays behind a reel, in seconds. */
+const SNIPPET_LEN = 15
+
+function fmt(sec: number) {
+  const s = Math.max(0, Math.round(sec))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
+
+/**
+ * Lets the user scrub to a starting point in the chosen song and preview the
+ * ~15s snippet that will loop behind their reel. Audio is muted/stopped until
+ * the user explicitly taps preview — never autoplays.
+ */
+function SnippetPicker({
+  src,
+  value,
+  onChange,
+}: {
+  src: string
+  value: number
+  onChange: (start: number) => void
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const stopAt = useRef<number | null>(null)
+  const [duration, setDuration] = useState(0)
+  const [previewing, setPreviewing] = useState(false)
+
+  const maxStart = Math.max(0, Math.floor(duration - SNIPPET_LEN))
+
+  // Stop preview and reset when the song changes.
+  useEffect(() => {
+    return () => {
+      const el = audioRef.current
+      if (el) el.pause()
+    }
+  }, [src])
+
+  function stop() {
+    const el = audioRef.current
+    if (el) el.pause()
+    setPreviewing(false)
+    stopAt.current = null
+  }
+
+  function preview() {
+    const el = audioRef.current
+    if (!el) return
+    el.currentTime = value
+    el.muted = false
+    stopAt.current = value + SNIPPET_LEN
+    el.play().then(() => setPreviewing(true)).catch(() => setPreviewing(false))
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border-2 border-border bg-card/60 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-sm font-medium text-foreground">Pick your snippet</p>
+        <span className="text-xs text-muted-foreground">
+          {duration > 0 ? `${fmt(value)}–${fmt(value + SNIPPET_LEN)}` : 'loading…'}
+        </span>
+      </div>
+      <p className="mb-3 text-xs text-muted-foreground">
+        Scrub to the part of the track that fits your reel. A ~{SNIPPET_LEN}s loop plays
+        behind it.
+      </p>
+      <div className="flex items-center gap-3">
+        <Button
+          type="button"
+          variant={previewing ? 'secondary' : 'outline'}
+          size="icon-sm"
+          aria-label={previewing ? 'Stop preview' : 'Preview snippet'}
+          disabled={duration === 0}
+          onClick={previewing ? stop : preview}
+        >
+          {previewing ? <Square size={14} /> : <Play size={14} />}
+        </Button>
+        <Slider
+          className="flex-1"
+          min={0}
+          max={maxStart || 1}
+          step={1}
+          value={[Math.min(value, maxStart)]}
+          disabled={duration === 0}
+          onValueChange={(v) => {
+            stop()
+            onChange(Array.isArray(v) ? v[0] : v)
+          }}
+        />
+      </div>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+        onTimeUpdate={(e) => {
+          if (stopAt.current != null && e.currentTarget.currentTime >= stopAt.current) stop()
+        }}
+        onEnded={stop}
+      />
     </div>
   )
 }

@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button'
 import { PixelDisc } from '@/components/pixel-icons'
 import { Pause, Play, ChevronLeft, ChevronRight, Volume2, VolumeX } from 'lucide-react'
 
+/** Length of the looped beat snippet, in seconds (matches the reel builder). */
+const SNIPPET_LEN = 15
+
 export type ReelFrame = {
   src: string
   caption?: string
@@ -24,12 +27,15 @@ export function ReelPlayer({
   frames,
   beatLabel,
   beatSrc,
+  beatStartSec = 0,
   className,
   autoPlay = false,
 }: {
   frames: ReelFrame[]
   beatLabel?: string
   beatSrc?: string
+  /** Start offset (seconds) of the beat snippet that loops behind the reel. */
+  beatStartSec?: number
   className?: string
   autoPlay?: boolean
 }) {
@@ -58,11 +64,13 @@ export function ReelPlayer({
     if (!el) return
     if (audioOn) {
       el.muted = false
+      // Start the chosen snippet; loop back to it rather than to 0.
+      if (Math.abs(el.currentTime - beatStartSec) > 1) el.currentTime = beatStartSec
       el.play().catch(() => setAudioOn(false))
     } else {
       el.pause()
     }
-  }, [audioOn])
+  }, [audioOn, beatStartSec])
 
   function prev() {
     setIndex((i) => (i - 1 + safeFrames.length) % safeFrames.length)
@@ -171,7 +179,17 @@ export function ReelPlayer({
 
       {beatSrc && (
         // eslint-disable-next-line jsx-a11y/media-has-caption
-        <audio ref={audioRef} src={beatSrc} loop preload="none" />
+        <audio
+          ref={audioRef}
+          src={beatSrc}
+          loop
+          preload="none"
+          onTimeUpdate={(e) => {
+            // Loop within the ~15s snippet window instead of the whole track.
+            const el = e.currentTarget
+            if (el.currentTime >= beatStartSec + SNIPPET_LEN) el.currentTime = beatStartSec
+          }}
+        />
       )}
     </div>
   )
