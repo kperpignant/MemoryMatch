@@ -41,6 +41,8 @@ export default async function VibeProfilePage({
     reel: data.reel
       ? {
           beatLabel: data.reel.beat?.title ?? undefined,
+          beatSrc: data.reel.beat?.audioUrl ?? undefined,
+          beatStartSec: data.reel.beatStartSec,
           frames: data.reel.frames.map((f) => ({
             src: f.src,
             caption: f.caption ?? undefined,

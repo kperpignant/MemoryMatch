@@ -1,0 +1,1 @@
+ALTER TABLE "memory_reels" ADD COLUMN "beat_start_sec" integer DEFAULT 0 NOT NULL;

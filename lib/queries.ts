@@ -186,6 +186,7 @@ export type VibePageData = {
   prompts: { question: string; answer: string }[]
   reel: {
     beat: { title: string; audioUrl: string } | null
+    beatStartSec: number
     frames: { id: string; src: string; caption: string | null; durationMs: number }[]
   } | null
 }
@@ -245,7 +246,11 @@ export async function getVibePage(username: string): Promise<VibePageData | null
     .where(eq(schema.profilePromptAnswers.profileId, row.profileId))
 
   const [reelRow] = await dbc
-    .select({ id: schema.memoryReels.id, beatId: schema.memoryReels.beatId })
+    .select({
+      id: schema.memoryReels.id,
+      beatId: schema.memoryReels.beatId,
+      beatStartSec: schema.memoryReels.beatStartSec,
+    })
     .from(schema.memoryReels)
     .where(and(eq(schema.memoryReels.userId, row.userId), eq(schema.memoryReels.isActive, true)))
     .limit(1)
@@ -273,7 +278,7 @@ export async function getVibePage(username: string): Promise<VibePageData | null
         .limit(1)
       beat = b ?? null
     }
-    reel = { beat, frames }
+    reel = { beat, beatStartSec: reelRow.beatStartSec, frames }
   }
 
   // Sun-sign compatibility with the viewer (only on someone else's shown horoscope).
@@ -646,6 +651,60 @@ export async function getBeats() {
     })
     .from(schema.beats)
     .orderBy(asc(schema.beats.title))
+}
+
+export type MyReel = {
+  beatId: string | null
+  beatStartSec: number
+  frames: { src: string; caption: string; duration: number }[]
+}
+
+/**
+ * The signed-in user's active reel, hydrated for the builder so edits reload
+ * from the database instead of resetting to defaults. Null before any save.
+ */
+export async function getMyReel(): Promise<MyReel | null> {
+  const me = await requireUser()
+  return getReelForUser(me.id)
+}
+
+/** Active reel for a given user — the pure read path behind {@link getMyReel}. */
+export async function getReelForUser(userId: string): Promise<MyReel | null> {
+  const dbc = db()
+
+  const [reel] = await dbc
+    .select({
+      id: schema.memoryReels.id,
+      beatId: schema.memoryReels.beatId,
+      beatStartSec: schema.memoryReels.beatStartSec,
+    })
+    .from(schema.memoryReels)
+    .where(and(eq(schema.memoryReels.userId, userId), eq(schema.memoryReels.isActive, true)))
+    .limit(1)
+  if (!reel) return null
+
+  const frames = await dbc
+    .select({
+      src: schema.mediaItems.mediaUrl,
+      caption: schema.reelFrames.caption,
+      durationMs: schema.reelFrames.durationMs,
+    })
+    .from(schema.reelFrames)
+    .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
+    .where(eq(schema.reelFrames.reelId, reel.id))
+    .orderBy(asc(schema.reelFrames.position))
+
+  if (frames.length === 0) return null
+
+  return {
+    beatId: reel.beatId,
+    beatStartSec: reel.beatStartSec,
+    frames: frames.map((f) => ({
+      src: f.src,
+      caption: f.caption ?? '',
+      duration: Math.round((f.durationMs ?? 4000) / 1000),
+    })),
+  }
 }
 
 /** My profile row, or null if onboarding hasn't been completed. */

@@ -20,6 +20,8 @@ const frameInput = z.object({
 
 const saveReelInput = z.object({
   beatId: z.string().uuid().nullable().optional(),
+  /** Start offset (seconds) of the chosen beat snippet. */
+  beatStartSec: z.number().int().min(0).max(600).default(0),
   frames: z.array(frameInput).min(1).max(12),
 })
 
@@ -30,24 +32,42 @@ export async function saveReel(input: z.infer<typeof saveReelInput>) {
   const { ok } = await rateLimit(me.id, 'reel_save')
   if (!ok) throw new Error('Too many requests — try again in a minute')
 
+  return saveReelForUser(me.id, data)
+}
+
+/**
+ * Persist a user's single active reel (frames replaced wholesale, in order).
+ * Auth/rate-limiting live in `saveReel`; this is the pure DB path so it can be
+ * exercised directly by integration tests.
+ */
+export async function saveReelForUser(
+  userId: string,
+  input: z.infer<typeof saveReelInput>,
+) {
+  const data = saveReelInput.parse(input)
   const dbc = db()
 
   // One active reel per user (PRD §15) — reuse it or create it.
   let [reel] = await dbc
     .select({ id: schema.memoryReels.id })
     .from(schema.memoryReels)
-    .where(eq(schema.memoryReels.userId, me.id))
+    .where(eq(schema.memoryReels.userId, userId))
     .limit(1)
   if (!reel) {
     ;[reel] = await dbc
       .insert(schema.memoryReels)
-      .values({ userId: me.id, isActive: true })
+      .values({ userId, isActive: true })
       .returning({ id: schema.memoryReels.id })
   }
 
   await dbc
     .update(schema.memoryReels)
-    .set({ beatId: data.beatId ?? null, isActive: true, updatedAt: new Date() })
+    .set({
+      beatId: data.beatId ?? null,
+      beatStartSec: data.beatStartSec,
+      isActive: true,
+      updatedAt: new Date(),
+    })
     .where(eq(schema.memoryReels.id, reel.id))
 
   // Replace frames wholesale (builder always submits the full ordered list).
@@ -65,7 +85,7 @@ export async function saveReel(input: z.infer<typeof saveReelInput>) {
   for (const [i, frame] of data.frames.entries()) {
     const [media] = await dbc
       .insert(schema.mediaItems)
-      .values({ userId: me.id, mediaUrl: frame.mediaUrl, mediaType: 'image' })
+      .values({ userId, mediaUrl: frame.mediaUrl, mediaType: 'image' })
       .returning({ id: schema.mediaItems.id })
     await dbc.insert(schema.reelFrames).values({
       reelId: reel.id,

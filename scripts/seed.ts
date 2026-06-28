@@ -16,11 +16,13 @@ config({ path: '.env.local' })
 import { and, eq } from 'drizzle-orm'
 import { db, schema } from '../lib/db'
 
+// The 4 reusable background tracks for the MVP (PRD §15). Audio lives in
+// /public/audio; filenames are stable so re-seeds keep the same URLs.
 const BEATS = [
-  { title: 'lo-fi tape loop', vibe: 'warm & nostalgic', audioUrl: '/audio/lofi-tape.wav' },
-  { title: 'dial-up dream', vibe: 'glitchy & soft', audioUrl: '/audio/dialup-dream.wav' },
-  { title: 'arcade sunset', vibe: 'bright & playful', audioUrl: '/audio/arcade-sunset.wav' },
-  { title: 'midnight modem', vibe: 'late & mellow', audioUrl: '/audio/midnight-modem.wav' },
+  { title: 'upbeat indie track', vibe: 'bright & jangly', audioUrl: '/audio/upbeat-indie.mp3' },
+  { title: 'melancholy pop', vibe: 'wistful & warm', audioUrl: '/audio/melancholy-pop.mp3' },
+  { title: 'future bass', vibe: 'glossy & electric', audioUrl: '/audio/future-bass.mp3' },
+  { title: 'lofi chill', vibe: 'cozy & mellow', audioUrl: '/audio/lofi-chill.mp3' },
 ]
 
 const INTERESTS = [
