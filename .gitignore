@@ -25,3 +25,6 @@ drizzle/meta/_journal.json.bak
 # Debug session logs (may contain secrets)
 debug-*.log
 .cursor/debug-*.log
+
+# Locally-uploaded dev media (Blob is used in production)
+/public/uploads/
