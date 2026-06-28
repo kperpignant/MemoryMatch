@@ -32,18 +32,31 @@ export async function saveReel(input: z.infer<typeof saveReelInput>) {
   const { ok } = await rateLimit(me.id, 'reel_save')
   if (!ok) throw new Error('Too many requests — try again in a minute')
 
+  return saveReelForUser(me.id, data)
+}
+
+/**
+ * Persist a user's single active reel (frames replaced wholesale, in order).
+ * Auth/rate-limiting live in `saveReel`; this is the pure DB path so it can be
+ * exercised directly by integration tests.
+ */
+export async function saveReelForUser(
+  userId: string,
+  input: z.infer<typeof saveReelInput>,
+) {
+  const data = saveReelInput.parse(input)
   const dbc = db()
 
   // One active reel per user (PRD §15) — reuse it or create it.
   let [reel] = await dbc
     .select({ id: schema.memoryReels.id })
     .from(schema.memoryReels)
-    .where(eq(schema.memoryReels.userId, me.id))
+    .where(eq(schema.memoryReels.userId, userId))
     .limit(1)
   if (!reel) {
     ;[reel] = await dbc
       .insert(schema.memoryReels)
-      .values({ userId: me.id, isActive: true })
+      .values({ userId, isActive: true })
       .returning({ id: schema.memoryReels.id })
   }
 
@@ -72,7 +85,7 @@ export async function saveReel(input: z.infer<typeof saveReelInput>) {
   for (const [i, frame] of data.frames.entries()) {
     const [media] = await dbc
       .insert(schema.mediaItems)
-      .values({ userId: me.id, mediaUrl: frame.mediaUrl, mediaType: 'image' })
+      .values({ userId, mediaUrl: frame.mediaUrl, mediaType: 'image' })
       .returning({ id: schema.mediaItems.id })
     await dbc.insert(schema.reelFrames).values({
       reelId: reel.id,

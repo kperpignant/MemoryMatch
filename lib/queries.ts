@@ -641,6 +641,11 @@ export type MyReel = {
  */
 export async function getMyReel(): Promise<MyReel | null> {
   const me = await requireUser()
+  return getReelForUser(me.id)
+}
+
+/** Active reel for a given user — the pure read path behind {@link getMyReel}. */
+export async function getReelForUser(userId: string): Promise<MyReel | null> {
   const dbc = db()
 
   const [reel] = await dbc
@@ -650,7 +655,7 @@ export async function getMyReel(): Promise<MyReel | null> {
       beatStartSec: schema.memoryReels.beatStartSec,
     })
     .from(schema.memoryReels)
-    .where(and(eq(schema.memoryReels.userId, me.id), eq(schema.memoryReels.isActive, true)))
+    .where(and(eq(schema.memoryReels.userId, userId), eq(schema.memoryReels.isActive, true)))
     .limit(1)
   if (!reel) return null
 
