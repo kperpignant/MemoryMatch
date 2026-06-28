@@ -4,7 +4,7 @@
  * Server-only — called from server components / route handlers.
  */
 import { auth } from '@clerk/nextjs/server'
-import { and, asc, eq, ne, notInArray, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNull, ne, notInArray, or, sql } from 'drizzle-orm'
 import { requireUser } from '@/lib/auth'
 import { db, schema } from '@/lib/db'
 import { sunCompatibility, type Compatibility } from '@/lib/horoscope'
@@ -30,9 +30,12 @@ export type BuddySummary = {
   userId: string
   username: string
   displayName: string
+  avatarUrl: string | null
   mood: string | null
   theme: string
   reelThumb: string | null
+  reelThumbFrameId: string | null
+  interests: string[]
   intent: string | null
   city: string | null
   state: string | null
@@ -108,6 +111,7 @@ export async function getBrowseList(opts?: BrowseListOptions): Promise<BuddySumm
       userId: schema.users.id,
       username: schema.profiles.username,
       displayName: schema.users.displayName,
+      avatarUrl: schema.profiles.avatarUrl,
       mood: schema.profiles.moodStatus,
       theme: schema.profiles.profileTheme,
       intent: schema.profiles.datingIntent,
@@ -123,20 +127,31 @@ export async function getBrowseList(opts?: BrowseListOptions): Promise<BuddySumm
     )
     .limit(50)
 
-  // First frame of each user's active reel as the thumbnail.
+  // First frame of each user's active reel as the thumbnail + their Top 8 interests.
   const result: BuddySummary[] = []
   for (const row of rows) {
     const [thumb] = await dbc
-      .select({ url: schema.mediaItems.mediaUrl })
+      .select({ id: schema.reelFrames.id, url: schema.mediaItems.mediaUrl })
       .from(schema.memoryReels)
       .innerJoin(schema.reelFrames, eq(schema.reelFrames.reelId, schema.memoryReels.id))
       .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
       .where(and(eq(schema.memoryReels.userId, row.userId), eq(schema.memoryReels.isActive, true)))
       .orderBy(asc(schema.reelFrames.position))
       .limit(1)
+
+    const interestRows = await dbc
+      .select({ name: schema.interests.name })
+      .from(schema.profileInterests)
+      .innerJoin(schema.profiles, eq(schema.profileInterests.profileId, schema.profiles.id))
+      .innerJoin(schema.interests, eq(schema.profileInterests.interestId, schema.interests.id))
+      .where(eq(schema.profiles.userId, row.userId))
+      .orderBy(asc(schema.profileInterests.position))
+
     result.push({
       ...row,
       reelThumb: thumb?.url ?? null,
+      reelThumbFrameId: thumb?.id ?? null,
+      interests: interestRows.map((i) => i.name),
       intent: row.intent,
       distanceMiles:
         row.distanceMiles != null ? Math.round(Number(row.distanceMiles) * 10) / 10 : null,
@@ -165,6 +180,8 @@ export type VibePageData = {
    *  else who shows their horoscope and both have a sun sign. */
   horoscopeMatch: Compatibility | null
   isOwner: boolean
+  viewerHasLiked: boolean
+  viewerHasCharmed: boolean
   interests: string[]
   prompts: { question: string; answer: string }[]
   reel: {
@@ -268,6 +285,26 @@ export async function getVibePage(username: string): Promise<VibePageData | null
       .where(eq(schema.profiles.userId, me.id))
       .limit(1)
     if (mine?.sunSign) horoscopeMatch = sunCompatibility(mine.sunSign, row.sunSign)
+  // Whether the viewer has already liked / charmed this person (so the UI can
+  // reflect persisted state on revisit instead of always rendering "un-liked").
+  let viewerHasLiked = false
+  let viewerHasCharmed = false
+  if (row.userId !== me.id) {
+    const [likeRow] = await dbc
+      .select({ id: schema.likes.id })
+      .from(schema.likes)
+      .where(and(eq(schema.likes.likerUserId, me.id), eq(schema.likes.likedUserId, row.userId)))
+      .limit(1)
+    viewerHasLiked = Boolean(likeRow)
+
+    const [charmRow] = await dbc
+      .select({ id: schema.reelReactions.id })
+      .from(schema.reelReactions)
+      .innerJoin(schema.reelFrames, eq(schema.reelReactions.reelFrameId, schema.reelFrames.id))
+      .innerJoin(schema.memoryReels, eq(schema.reelFrames.reelId, schema.memoryReels.id))
+      .where(and(eq(schema.reelReactions.reactorUserId, me.id), eq(schema.memoryReels.userId, row.userId)))
+      .limit(1)
+    viewerHasCharmed = Boolean(charmRow)
   }
 
   const { profileId: _omit, ...pub } = row
@@ -275,6 +312,8 @@ export async function getVibePage(username: string): Promise<VibePageData | null
     ...pub,
     horoscopeMatch,
     isOwner: row.userId === me.id,
+    viewerHasLiked,
+    viewerHasCharmed,
     interests: interests.map((i) => i.name),
     prompts,
     reel,
@@ -284,6 +323,7 @@ export async function getVibePage(username: string): Promise<VibePageData | null
 export type ChemistryData = {
   matchId: string
   starters: { id: string; text: string; context: string | null }[]
+  sharedInterests: string[]
   you: { username: string; displayName: string; mood: string | null; theme: string; reelThumb: string | null }
   them: { username: string; displayName: string; mood: string | null; theme: string; reelThumb: string | null }
 }
@@ -340,7 +380,257 @@ export async function getChemistry(matchId: string): Promise<ChemistryData | nul
     .where(eq(schema.conversationStarters.matchId, matchId))
     .limit(3)
 
-  return { matchId, starters, you, them }
+  // Interests both members list in their Top 8.
+  const interestRows = await dbc
+    .select({ name: schema.interests.name })
+    .from(schema.profileInterests)
+    .innerJoin(schema.profiles, eq(schema.profileInterests.profileId, schema.profiles.id))
+    .innerJoin(schema.interests, eq(schema.profileInterests.interestId, schema.interests.id))
+    .where(inArray(schema.profiles.userId, [me.id, otherId]))
+  const interestCounts = new Map<string, number>()
+  for (const { name } of interestRows) interestCounts.set(name, (interestCounts.get(name) ?? 0) + 1)
+  const sharedInterests = [...interestCounts.entries()]
+    .filter(([, n]) => n >= 2)
+    .map(([name]) => name)
+
+  return { matchId, starters, sharedInterests, you, them }
+}
+
+export type ReceivedCharm = {
+  fromUserId: string
+  username: string
+  displayName: string
+  reelThumb: string | null
+  kind: string
+  message: string | null
+  createdAt: Date
+}
+
+export type MyChemistry = {
+  activeMatch:
+    | {
+        matchId: string
+        username: string
+        displayName: string
+        mood: string | null
+        reelThumb: string | null
+      }
+    | null
+  receivedCharms: ReceivedCharm[]
+}
+
+/**
+ * The signed-in user's ReelChemistry home: their one active match (if any) plus
+ * the private charms others have sent them (reactions on their own reel frames).
+ * Charms are recipient-only — never shown publicly or as counts.
+ */
+export async function getMyChemistry(): Promise<MyChemistry> {
+  const me = await requireUser()
+  const dbc = db()
+  const hidden = await blockedIdsFor(me.id)
+
+  // Active match (one at a time).
+  const [match] = await dbc
+    .select()
+    .from(schema.matches)
+    .where(
+      and(
+        eq(schema.matches.status, 'active'),
+        or(eq(schema.matches.userAId, me.id), eq(schema.matches.userBId, me.id)),
+      ),
+    )
+    .limit(1)
+
+  let activeMatch: MyChemistry['activeMatch'] = null
+  if (match) {
+    const otherId = match.userAId === me.id ? match.userBId : match.userAId
+    const [r] = await dbc
+      .select({
+        username: schema.profiles.username,
+        displayName: schema.users.displayName,
+        mood: schema.profiles.moodStatus,
+      })
+      .from(schema.profiles)
+      .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
+      .where(eq(schema.profiles.userId, otherId))
+      .limit(1)
+    if (r) {
+      const [thumb] = await dbc
+        .select({ url: schema.mediaItems.mediaUrl })
+        .from(schema.memoryReels)
+        .innerJoin(schema.reelFrames, eq(schema.reelFrames.reelId, schema.memoryReels.id))
+        .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
+        .where(and(eq(schema.memoryReels.userId, otherId), eq(schema.memoryReels.isActive, true)))
+        .orderBy(asc(schema.reelFrames.position))
+        .limit(1)
+      activeMatch = {
+        matchId: match.id,
+        username: r.username,
+        displayName: r.displayName,
+        mood: r.mood,
+        reelThumb: thumb?.url ?? null,
+      }
+    }
+  }
+
+  // Private received charms: reactions on my own reel frames, from active, non-blocked users.
+  const charmRows = await dbc
+    .select({
+      fromUserId: schema.reelReactions.reactorUserId,
+      kind: schema.reelReactions.reactionType,
+      message: schema.reelReactions.message,
+      createdAt: schema.reelReactions.createdAt,
+      username: schema.profiles.username,
+      displayName: schema.users.displayName,
+    })
+    .from(schema.reelReactions)
+    .innerJoin(schema.reelFrames, eq(schema.reelReactions.reelFrameId, schema.reelFrames.id))
+    .innerJoin(schema.memoryReels, eq(schema.reelFrames.reelId, schema.memoryReels.id))
+    .innerJoin(schema.users, eq(schema.reelReactions.reactorUserId, schema.users.id))
+    .innerJoin(schema.profiles, eq(schema.profiles.userId, schema.users.id))
+    .where(
+      and(
+        eq(schema.memoryReels.userId, me.id),
+        ne(schema.reelReactions.reactorUserId, me.id),
+        eq(schema.users.status, 'active'),
+        eq(schema.profiles.status, 'active'),
+      ),
+    )
+    .orderBy(desc(schema.reelReactions.createdAt))
+
+  // Newest charm per sender, blocked senders excluded.
+  const seen = new Set<string>()
+  const receivedCharms: ReceivedCharm[] = []
+  for (const row of charmRows) {
+    if (hidden.includes(row.fromUserId)) continue
+    if (seen.has(row.fromUserId)) continue
+    seen.add(row.fromUserId)
+    const [thumb] = await dbc
+      .select({ url: schema.mediaItems.mediaUrl })
+      .from(schema.memoryReels)
+      .innerJoin(schema.reelFrames, eq(schema.reelFrames.reelId, schema.memoryReels.id))
+      .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
+      .where(and(eq(schema.memoryReels.userId, row.fromUserId), eq(schema.memoryReels.isActive, true)))
+      .orderBy(asc(schema.reelFrames.position))
+      .limit(1)
+    receivedCharms.push({
+      fromUserId: row.fromUserId,
+      username: row.username,
+      displayName: row.displayName,
+      reelThumb: thumb?.url ?? null,
+      kind: row.kind,
+      message: row.message,
+      createdAt: row.createdAt,
+    })
+  }
+
+  return { activeMatch, receivedCharms }
+}
+
+export type ChatMessage = {
+  id: string
+  senderUserId: string
+  body: string
+  createdAt: Date
+  readAt: Date | null
+}
+
+export type ActiveConversation = {
+  matchId: string
+  meId: string
+  partner: {
+    username: string
+    displayName: string
+    reelThumb: string | null
+  }
+  messages: ChatMessage[]
+  unreadCount: number
+}
+
+/**
+ * The signed-in user's active match conversation for chat polling.
+ * When `after` is set, returns only messages newer than that timestamp;
+ * otherwise returns the most recent 50 messages (ascending).
+ */
+export async function getActiveConversation(after?: Date): Promise<ActiveConversation | null> {
+  const me = await requireUser()
+  const dbc = db()
+
+  const [match] = await dbc
+    .select()
+    .from(schema.matches)
+    .where(
+      and(
+        eq(schema.matches.status, 'active'),
+        or(eq(schema.matches.userAId, me.id), eq(schema.matches.userBId, me.id)),
+      ),
+    )
+    .limit(1)
+  if (!match) return null
+
+  const otherId = match.userAId === me.id ? match.userBId : match.userAId
+  const hidden = await blockedIdsFor(me.id)
+  if (hidden.includes(otherId)) return null
+
+  const [partnerRow] = await dbc
+    .select({
+      username: schema.profiles.username,
+      displayName: schema.users.displayName,
+    })
+    .from(schema.profiles)
+    .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
+    .where(eq(schema.profiles.userId, otherId))
+    .limit(1)
+  if (!partnerRow) return null
+
+  const [thumb] = await dbc
+    .select({ url: schema.mediaItems.mediaUrl })
+    .from(schema.memoryReels)
+    .innerJoin(schema.reelFrames, eq(schema.reelFrames.reelId, schema.memoryReels.id))
+    .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
+    .where(and(eq(schema.memoryReels.userId, otherId), eq(schema.memoryReels.isActive, true)))
+    .orderBy(asc(schema.reelFrames.position))
+    .limit(1)
+
+  const messageWhere = after
+    ? and(eq(schema.messages.matchId, match.id), gt(schema.messages.createdAt, after))
+    : eq(schema.messages.matchId, match.id)
+
+  const messageRows = await dbc
+    .select({
+      id: schema.messages.id,
+      senderUserId: schema.messages.senderUserId,
+      body: schema.messages.body,
+      createdAt: schema.messages.createdAt,
+      readAt: schema.messages.readAt,
+    })
+    .from(schema.messages)
+    .where(messageWhere)
+    .orderBy(asc(schema.messages.createdAt))
+    .limit(after ? 100 : 50)
+
+  const [unread] = await dbc
+    .select({ count: sql<number>`count(*)::int` })
+    .from(schema.messages)
+    .where(
+      and(
+        eq(schema.messages.matchId, match.id),
+        ne(schema.messages.senderUserId, me.id),
+        isNull(schema.messages.readAt),
+      ),
+    )
+
+  return {
+    matchId: match.id,
+    meId: me.id,
+    partner: {
+      username: partnerRow.username,
+      displayName: partnerRow.displayName,
+      reelThumb: thumb?.url ?? null,
+    },
+    messages: messageRows,
+    unreadCount: unread?.count ?? 0,
+  }
 }
 
 /** The 4 provided Profile Beats (seeded). */

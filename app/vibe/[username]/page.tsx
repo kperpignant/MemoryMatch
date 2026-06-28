@@ -36,6 +36,8 @@ export default async function VibeProfilePage({
     risingSign: data.risingSign,
     showHoroscope: data.showHoroscope,
     horoscopeMatch: data.horoscopeMatch,
+    alreadyLiked: data.viewerHasLiked,
+    alreadyCharmed: data.viewerHasCharmed,
     reel: data.reel
       ? {
           beatLabel: data.reel.beat?.title ?? undefined,

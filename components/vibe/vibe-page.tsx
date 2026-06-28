@@ -43,6 +43,8 @@ export type VibeProfile = {
   risingSign?: string | null
   showHoroscope?: boolean
   horoscopeMatch?: Compatibility | null
+  alreadyLiked?: boolean
+  alreadyCharmed?: boolean
 }
 
 export function VibePage({
@@ -54,8 +56,10 @@ export function VibePage({
 }) {
   const router = useRouter()
   const [charmOpen, setCharmOpen] = useState(false)
-  const [liked, setLiked] = useState(false)
-  const [sentCharm, setSentCharm] = useState<CharmKind | null>(null)
+  const [liked, setLiked] = useState(profile.alreadyLiked ?? false)
+  const [sentCharm, setSentCharm] = useState<CharmKind | null>(
+    profile.alreadyCharmed ? 'wave' : null,
+  )
   const [isLiking, startLikeTransition] = useTransition()
   const [likeError, setLikeError] = useState<string | null>(null)
 

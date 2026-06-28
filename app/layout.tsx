@@ -2,6 +2,7 @@ import { ClerkProvider } from '@clerk/nextjs'
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import { Baloo_2, Onest, Space_Mono } from 'next/font/google'
+import { ChatDockSlot } from '@/components/chat/chat-dock-slot'
 import { DEFAULT_THEME_ID, getMyThemeId } from '@/lib/queries'
 import './globals.css'
 
@@ -54,6 +55,7 @@ export default async function RootLayout({
     >
       <body className="font-sans antialiased">
         {children}
+        {clerkConfigured && <ChatDockSlot />}
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

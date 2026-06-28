@@ -270,7 +270,28 @@ export const conversationStarters = pgTable(
   (t) => [index('idx_starters_match').on(t.matchId)],
 )
 
-// 15) blocks — bidirectional invisibility + interaction prevention
+// 15) messages — 1:1 chat per active match
+export const messages = pgTable(
+  'messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    matchId: uuid('match_id')
+      .notNull()
+      .references(() => matches.id, { onDelete: 'cascade' }),
+    senderUserId: uuid('sender_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    body: text('body').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    readAt: timestamp('read_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('idx_messages_match_created').on(t.matchId, t.createdAt),
+    index('idx_messages_match_read').on(t.matchId, t.readAt),
+  ],
+)
+
+// 16) blocks — bidirectional invisibility + interaction prevention
 export const blocks = pgTable(
   'blocks',
   {
@@ -291,7 +312,7 @@ export const blocks = pgTable(
   ],
 )
 
-// 16) reports — user/content reports with reason + review status
+// 17) reports — user/content reports with reason + review status
 export const reports = pgTable(
   'reports',
   {
@@ -314,7 +335,7 @@ export const reports = pgTable(
   (t) => [index('idx_reports_status').on(t.status)],
 )
 
-// 17) audit_events — lightweight audit trail for sensitive actions
+// 18) audit_events — lightweight audit trail for sensitive actions
 export const auditEvents = pgTable(
   'audit_events',
   {

@@ -40,6 +40,13 @@ export function SiteHeader() {
           </Link>
           <SignedIn>
             <Link
+              href="/chemistry"
+              className={cn(navLink, isActive('/chemistry') && navLinkActive)}
+              aria-current={isActive('/chemistry') ? 'page' : undefined}
+            >
+              ReelChemistry
+            </Link>
+            <Link
               href="/me"
               className={cn(navLink, isActive('/me') && navLinkActive)}
               aria-current={isActive('/me') ? 'page' : undefined}

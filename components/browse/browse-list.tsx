@@ -5,12 +5,13 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Y2KWindow } from '@/components/y2k-window'
-import { CharmComposer } from '@/components/charm-composer'
+import { CharmComposer, type CharmKind } from '@/components/charm-composer'
 import { Chip } from '@/components/chip'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PixelWave, PixelStar } from '@/components/pixel-icons'
 import { MapPin, Search } from 'lucide-react'
+import { sendReaction } from '@/lib/actions/reactions'
 import type { BuddySummary } from '@/lib/queries'
 
 const INTENT_LABEL: Record<string, string> = {
@@ -37,8 +38,22 @@ function formatLocation(buddy: BuddySummary): string | null {
   return null
 }
 
-function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => void }) {
+function BuddyRow({
+  buddy,
+  onCharm,
+  charmed,
+  activeInterest,
+  onPickInterest,
+}: {
+  buddy: Buddy
+  onCharm: (b: Buddy) => void
+  charmed: boolean
+  activeInterest: string | null
+  onPickInterest: (interest: string) => void
+}) {
   const loc = formatLocation(buddy)
+  const canCharm = Boolean(buddy.reelThumbFrameId)
+  const thumbSrc = buddy.avatarUrl ?? buddy.reelThumb
 
   return (
     <li className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5 transition-colors hover:border-primary/40">
@@ -46,8 +61,8 @@ function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => voi
         href={`/vibe/${buddy.username}`}
         className="relative size-14 shrink-0 overflow-hidden rounded-lg"
       >
-        {buddy.reelThumb ? (
-          <Image src={buddy.reelThumb} alt="" fill className="object-cover" sizes="56px" />
+        {thumbSrc ? (
+          <Image src={thumbSrc} alt="" fill className="object-cover" sizes="56px" />
         ) : (
           <span className="grid size-full place-items-center bg-secondary text-lg font-bold text-secondary-foreground">
             {buddy.displayName.charAt(0)}
@@ -81,15 +96,36 @@ function BuddyRow({ buddy, onCharm }: { buddy: Buddy; onCharm: (b: Buddy) => voi
             </span>
           )}
         </div>
+        {buddy.interests.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {buddy.interests.slice(0, 4).map((it) => (
+              <button
+                key={it}
+                type="button"
+                onClick={() => onPickInterest(it)}
+                className={
+                  'rounded-full border px-2 py-0.5 text-[11px] transition-colors ' +
+                  (activeInterest === it
+                    ? 'border-primary bg-primary/10 text-foreground'
+                    : 'border-border bg-card text-muted-foreground hover:border-primary/40')
+                }
+              >
+                {it}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <Button
-        variant="outline"
+        variant={charmed ? 'secondary' : 'outline'}
         size="sm"
         className="shrink-0"
         onClick={() => onCharm(buddy)}
+        disabled={charmed || !canCharm}
+        title={canCharm ? undefined : 'No reel to charm yet'}
       >
         <PixelWave size={14} className="mr-1" />
-        Charm
+        {charmed ? 'Charm sent' : 'Charm'}
       </Button>
     </li>
   )
@@ -107,7 +143,9 @@ export function BrowseList({
   const router = useRouter()
   const [query, setQuery] = useState('')
   const [pace, setPace] = useState<string | null>(null)
+  const [interest, setInterest] = useState<string | null>(null)
   const [charmFor, setCharmFor] = useState<Buddy | null>(null)
+  const [charmed, setCharmed] = useState<Set<string>>(new Set())
 
   const enriched: Buddy[] = buddies.map((b) => ({
     ...b,
@@ -119,9 +157,16 @@ export function BrowseList({
     [enriched],
   )
 
+  const interestOptions = useMemo(
+    () => [...new Set(enriched.flatMap((b) => b.interests))].sort((a, b) => a.localeCompare(b)),
+    [enriched],
+  )
+
   const filtered = useMemo(() => {
     return enriched.filter((b) => {
       const matchesPace = !pace || b.pace === pace
+      const matchesInterest =
+        !interest || b.interests.some((it) => it.toLowerCase() === interest.toLowerCase())
       const q = query.trim().toLowerCase()
       const matchesQuery =
         !q ||
@@ -129,10 +174,30 @@ export function BrowseList({
         b.username.toLowerCase().includes(q) ||
         (b.mood ?? '').toLowerCase().includes(q) ||
         (b.city ?? '').toLowerCase().includes(q) ||
-        (b.state ?? '').toLowerCase().includes(q)
-      return matchesPace && matchesQuery
+        (b.state ?? '').toLowerCase().includes(q) ||
+        b.interests.some((it) => it.toLowerCase().includes(q))
+      return matchesPace && matchesInterest && matchesQuery
     })
-  }, [enriched, query, pace])
+  }, [enriched, query, pace, interest])
+
+  function pickInterest(it: string) {
+    setInterest((cur) => (cur === it ? null : it))
+  }
+
+  async function handleSendCharm({ kind, payload }: { kind: CharmKind; payload: string }) {
+    const buddy = charmFor
+    if (!buddy?.reelThumbFrameId) return
+    try {
+      await sendReaction({
+        reelFrameId: buddy.reelThumbFrameId,
+        reactionType: kind,
+        message: kind !== 'wave' ? payload : undefined,
+      })
+      setCharmed((prev) => new Set(prev).add(buddy.username))
+    } catch {
+      // non-blocking — the composer has already closed
+    }
+  }
 
   function setRadius(value: number | null) {
     if (value == null) {
@@ -208,6 +273,22 @@ export function BrowseList({
               ))}
             </div>
           )}
+
+          {interestOptions.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-muted-foreground">Into</span>
+              <div className="flex max-h-28 flex-wrap gap-2 overflow-y-auto">
+                <Chip selected={interest === null} onClick={() => setInterest(null)}>
+                  anything
+                </Chip>
+                {interestOptions.map((it) => (
+                  <Chip key={it} selected={interest === it} onClick={() => pickInterest(it)}>
+                    {it}
+                  </Chip>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* List */}
@@ -215,7 +296,14 @@ export function BrowseList({
           {filtered.length > 0 ? (
             <ul className="flex flex-col gap-2">
               {filtered.map((b) => (
-                <BuddyRow key={b.username} buddy={b} onCharm={setCharmFor} />
+                <BuddyRow
+                  key={b.username}
+                  buddy={b}
+                  onCharm={setCharmFor}
+                  charmed={charmed.has(b.username)}
+                  activeInterest={interest}
+                  onPickInterest={pickInterest}
+                />
               ))}
             </ul>
           ) : buddies.length === 0 ? (
@@ -238,6 +326,7 @@ export function BrowseList({
         open={charmFor !== null}
         onOpenChange={(o) => !o && setCharmFor(null)}
         name={charmFor?.displayName ?? 'them'}
+        onSend={handleSendCharm}
       />
     </div>
   )
