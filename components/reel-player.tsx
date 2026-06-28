@@ -18,7 +18,7 @@ export type ReelFrame = {
 }
 
 /**
- * ReelPlayer — a 16:9 Memory Reel player.
+ * ReelPlayer — Memory Reel slideshow (taller 3:4 frame on mobile, 4:5 on small screens).
  * - Audio NEVER autoplays and starts muted; a button toggles the background track.
  * - Respects prefers-reduced-motion: no auto-advance, no crossfade animation.
  * - Always offers pause + manual prev/next.
@@ -30,6 +30,7 @@ export function ReelPlayer({
   beatStartSec = 0,
   className,
   autoPlay = false,
+  edgeToEdge = false,
 }: {
   frames: ReelFrame[]
   beatLabel?: string
@@ -38,6 +39,8 @@ export function ReelPlayer({
   beatStartSec?: number
   className?: string
   autoPlay?: boolean
+  /** Drop inner padding/radius so the frame fills a flush Y2KWindow body. */
+  edgeToEdge?: boolean
 }) {
   const reduceMotion = usePrefersReducedMotion()
   const [index, setIndex] = React.useState(0)
@@ -108,7 +111,14 @@ export function ReelPlayer({
 
   return (
     <div className={cn('flex flex-col gap-2', className)}>
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-foreground/5">
+      <div
+        className={cn(
+          'relative aspect-[4/5] w-full overflow-hidden bg-foreground/5 sm:aspect-[3/4]',
+          edgeToEdge
+            ? 'rounded-none border-0'
+            : 'rounded-xl border border-border',
+        )}
+      >
         {safeFrames.map((frame, i) => (
           <div
             key={i}
@@ -124,7 +134,7 @@ export function ReelPlayer({
                 src={frame.src || '/placeholder.svg'}
                 alt={frame.caption || `Reel frame ${i + 1}`}
                 fill
-                sizes="(min-width: 768px) 42rem, 100vw"
+                sizes="100vw"
                 className="object-cover"
               />
             ) : (
@@ -164,7 +174,7 @@ export function ReelPlayer({
       </div>
 
       {/* controls */}
-      <div className="flex items-center justify-between gap-2">
+      <div className={cn('flex items-center justify-between gap-2', edgeToEdge && 'px-4')}>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon-sm" onClick={prev} aria-label="Previous frame">
             <ChevronLeft />
@@ -199,7 +209,7 @@ export function ReelPlayer({
       </div>
 
       {reduceMotion && (
-        <p className="text-xs text-muted-foreground">
+        <p className={cn('text-xs text-muted-foreground', edgeToEdge && 'px-4')}>
           Reduced motion is on — use the arrows to move through frames.
         </p>
       )}

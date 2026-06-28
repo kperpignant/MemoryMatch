@@ -367,14 +367,15 @@ export function ReelBuilder({ beats, reel }: { beats: Beat[]; reel?: SavedReel |
 
         {/* PREVIEW (sticky on desktop) */}
         <div className="lg:sticky lg:top-6 lg:self-start">
-          <Y2KWindow title="live preview" accent>
+          <Y2KWindow title="live preview" accent bodyClassName="p-0 pb-4">
             <ReelPlayer
               frames={frames}
               beatLabel={selectedBeat?.title}
               beatSrc={selectedBeat?.audioUrl}
               beatStartSec={beatStartSec}
+              edgeToEdge
             />
-            <div className="mt-4 flex flex-col gap-2">
+            <div className="mt-4 flex flex-col gap-2 px-4">
               {saveError && (
                 <p className="rounded-lg bg-destructive/10 px-3 py-2 text-center text-sm text-destructive">
                   {saveError}

@@ -164,13 +164,14 @@ export function VibePage({
           </Y2KWindow>
 
           {/* Memory Reel */}
-          <Y2KWindow title="memory reel">
+          <Y2KWindow title="memory reel" bodyClassName="p-0 pb-4">
             <ReelPlayer
               frames={profile.reel.frames}
               beatLabel={profile.reel.beatLabel}
               beatSrc={profile.reel.beatSrc}
               beatStartSec={profile.reel.beatStartSec}
               autoPlay
+              edgeToEdge
             />
           </Y2KWindow>
 
