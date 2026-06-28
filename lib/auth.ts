@@ -20,6 +20,22 @@ function isAtLeast18(dobIso: string): boolean {
   return dob <= cutoff
 }
 
+/**
+ * Lightweight auth: confirm a Clerk session exists and return its id, WITHOUT
+ * requiring a provisioned `users` row or the 18+ DOB gate.
+ *
+ * For onboarding-time utility endpoints (image upload, location lookup) that
+ * run during the wizard's first step — before the profile, and therefore the
+ * date of birth, has been persisted to Clerk. requireUser() would 401 these
+ * because the DOB gate hasn't been satisfied yet. Profile creation itself still
+ * goes through requireUser(), so the 18+ gate is enforced where it matters.
+ */
+export async function requireSession(): Promise<string> {
+  const { userId: clerkId } = await auth()
+  if (!clerkId) throw new Error('Unauthorized')
+  return clerkId
+}
+
 export async function requireUser() {
   const { userId: clerkId } = await auth()
   if (!clerkId) throw new Error('Unauthorized')

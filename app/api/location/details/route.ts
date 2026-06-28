@@ -2,12 +2,12 @@
  * Place details proxy — resolves a Google place_id to city/state + lat/lng.
  */
 import { NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireSession } from '@/lib/auth'
 import { getPlaceLocation } from '@/lib/google-places'
 
 export async function GET(req: Request) {
   try {
-    await requireUser()
+    await requireSession()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
