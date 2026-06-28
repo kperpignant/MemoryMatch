@@ -8,7 +8,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { put } from '@vercel/blob'
 import { NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireSession } from '@/lib/auth'
 
 const MAX_BYTES = 8 * 1024 * 1024
 
@@ -42,7 +42,7 @@ const useBlob =
 
 export async function POST(req: Request) {
   try {
-    await requireUser()
+    await requireSession()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

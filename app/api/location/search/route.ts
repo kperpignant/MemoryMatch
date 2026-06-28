@@ -3,12 +3,12 @@
  * Keeps GOOGLE_MAPS_API_KEY server-side.
  */
 import { NextResponse } from 'next/server'
-import { requireUser } from '@/lib/auth'
+import { requireSession } from '@/lib/auth'
 import { searchCities } from '@/lib/google-places'
 
 export async function GET(req: Request) {
   try {
-    await requireUser()
+    await requireSession()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
