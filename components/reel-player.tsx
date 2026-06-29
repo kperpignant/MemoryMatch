@@ -98,20 +98,26 @@ export function ReelPlayer({
   React.useEffect(() => {
     if (!autoPlay || !beatSrc) return
     const onGesture = () => {
-      if (!userMutedRef.current && playingRef.current) {
-        const el = audioRef.current
-        if (el && !el.paused) el.muted = false
-      }
       cleanup()
+      // First real interaction satisfies the browser's autoplay policy — start
+      // audible playback now (unless the visitor has muted it themselves).
+      if (userMutedRef.current || !playingRef.current) return
+      const el = audioRef.current
+      if (!el) return
+      if (Math.abs(el.currentTime - beatStartSec) > 1) el.currentTime = beatStartSec
+      el.muted = false
+      el.play().catch(() => {})
     }
     const cleanup = () => {
       window.removeEventListener('pointerdown', onGesture)
       window.removeEventListener('keydown', onGesture)
+      window.removeEventListener('touchstart', onGesture)
     }
     window.addEventListener('pointerdown', onGesture)
     window.addEventListener('keydown', onGesture)
+    window.addEventListener('touchstart', onGesture)
     return cleanup
-  }, [autoPlay, beatSrc])
+  }, [autoPlay, beatSrc, beatStartSec])
 
   function toggleBeatMute() {
     setBeatMuted((muted) => {
@@ -227,7 +233,7 @@ export function ReelPlayer({
               ) : null}
             </Button>
             <Slider
-              className="min-w-0 flex-1"
+              className="hidden min-w-0 flex-1 sm:flex"
               min={0}
               max={100}
               step={1}
