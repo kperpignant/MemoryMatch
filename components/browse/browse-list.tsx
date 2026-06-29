@@ -1,10 +1,11 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Y2KWindow } from '@/components/y2k-window'
+import { ImageLightbox } from '@/components/image-lightbox'
 import { CharmComposer, type CharmKind } from '@/components/charm-composer'
 import { Chip } from '@/components/chip'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,9 @@ const RADIUS_OPTIONS = [
 
 type Buddy = BuddySummary & { pace: string }
 
+/** How many buddies to reveal per "Load more" press. */
+const PAGE_SIZE = 10
+
 function formatLocation(buddy: BuddySummary): string | null {
   if (buddy.city && buddy.state) return `${buddy.city}, ${buddy.state}`
   return null
@@ -57,8 +61,10 @@ function BuddyRow({
 
   return (
     <li className="flex items-center gap-3 rounded-xl border border-border bg-card p-2.5 transition-colors hover:border-primary/40">
-      <Link
-        href={`/vibe/${buddy.username}`}
+      <ImageLightbox
+        src={thumbSrc}
+        alt={buddy.displayName}
+        name={buddy.displayName}
         className="relative size-14 shrink-0 overflow-hidden rounded-lg"
       >
         {thumbSrc ? (
@@ -68,7 +74,7 @@ function BuddyRow({
             {buddy.displayName.charAt(0)}
           </span>
         )}
-      </Link>
+      </ImageLightbox>
       <div className="min-w-0 flex-1">
         <Link
           href={`/vibe/${buddy.username}`}
@@ -146,6 +152,8 @@ export function BrowseList({
   const [interest, setInterest] = useState<string | null>(null)
   const [charmFor, setCharmFor] = useState<Buddy | null>(null)
   const [charmed, setCharmed] = useState<Set<string>>(new Set())
+  const [charmError, setCharmError] = useState<string | null>(null)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
   const enriched: Buddy[] = buddies.map((b) => ({
     ...b,
@@ -180,6 +188,14 @@ export function BrowseList({
     })
   }, [enriched, query, pace, interest])
 
+  // Reset pagination whenever the filtered set changes (search/pace/interest).
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+  }, [query, pace, interest])
+
+  const visible = filtered.slice(0, visibleCount)
+  const hasMore = filtered.length > visible.length
+
   function pickInterest(it: string) {
     setInterest((cur) => (cur === it ? null : it))
   }
@@ -187,6 +203,7 @@ export function BrowseList({
   async function handleSendCharm({ kind, payload }: { kind: CharmKind; payload: string }) {
     const buddy = charmFor
     if (!buddy?.reelThumbFrameId) return
+    setCharmError(null)
     try {
       await sendReaction({
         reelFrameId: buddy.reelThumbFrameId,
@@ -194,8 +211,10 @@ export function BrowseList({
         message: kind !== 'wave' ? payload : undefined,
       })
       setCharmed((prev) => new Set(prev).add(buddy.username))
-    } catch {
-      // non-blocking — the composer has already closed
+    } catch (err) {
+      setCharmError(
+        `Couldn't send a charm to ${buddy.displayName}: ${err instanceof Error ? err.message : 'try again later'}`,
+      )
     }
   }
 
@@ -291,21 +310,45 @@ export function BrowseList({
           )}
         </div>
 
+        {charmError && (
+          <p
+            role="status"
+            className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
+            {charmError}
+          </p>
+        )}
+
         {/* List */}
         <div className="mt-5 flex flex-col gap-5">
           {filtered.length > 0 ? (
-            <ul className="flex flex-col gap-2">
-              {filtered.map((b) => (
-                <BuddyRow
-                  key={b.username}
-                  buddy={b}
-                  onCharm={setCharmFor}
-                  charmed={charmed.has(b.username)}
-                  activeInterest={interest}
-                  onPickInterest={pickInterest}
-                />
-              ))}
-            </ul>
+            <>
+              <ul className="flex flex-col gap-2">
+                {visible.map((b) => (
+                  <BuddyRow
+                    key={b.username}
+                    buddy={b}
+                    onCharm={setCharmFor}
+                    charmed={charmed.has(b.username)}
+                    activeInterest={interest}
+                    onPickInterest={pickInterest}
+                  />
+                ))}
+              </ul>
+              {hasMore && (
+                <div className="flex flex-col items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  >
+                    Load more
+                  </Button>
+                  <span className="text-xs text-muted-foreground">
+                    Showing {visible.length} of {filtered.length}
+                  </span>
+                </div>
+              )}
+            </>
           ) : buddies.length === 0 ? (
             <p className="flex items-center justify-center gap-2 rounded-xl bg-secondary/30 px-4 py-8 text-center text-sm text-muted-foreground">
               <PixelStar size={14} className="text-[var(--mm-accent)]" />

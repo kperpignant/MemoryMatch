@@ -47,7 +47,7 @@ export function ReelPlayer({
   const [index, setIndex] = React.useState(0)
   const [playing, setPlaying] = React.useState(autoPlay && !reduceMotion)
   const [beatMuted, setBeatMuted] = React.useState(false)
-  const [volume, setVolume] = React.useState(60)
+  const [volume, setVolume] = React.useState(30)
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
   const playingRef = React.useRef(playing)
   playingRef.current = playing

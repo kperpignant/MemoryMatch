@@ -3,8 +3,17 @@
 import { useUser } from '@clerk/nextjs'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
-import { OnboardingWizard, type OnboardingData } from '@/components/onboarding/onboarding-wizard'
-import { completeOnboarding, getProfileForEdit, updateProfile } from '@/lib/actions/profile'
+import {
+  OnboardingWizard,
+  type DatingPrompt,
+  type OnboardingData,
+} from '@/components/onboarding/onboarding-wizard'
+import {
+  completeOnboarding,
+  getDatingPrompts,
+  getProfileForEdit,
+  updateProfile,
+} from '@/lib/actions/profile'
 
 /** Update <html data-theme> live so a theme change reflects site-wide
  *  immediately — the server-rendered root layout only re-reads it on a full
@@ -28,6 +37,19 @@ export function OnboardingAuthenticated() {
   // Prefill from the existing profile so "Edit profile" edits instead of wiping.
   const [initial, setInitial] = React.useState<Partial<OnboardingData> | null>(null)
   const [loadingProfile, setLoadingProfile] = React.useState(true)
+  const [datingPrompts, setDatingPrompts] = React.useState<DatingPrompt[]>([])
+
+  React.useEffect(() => {
+    let active = true
+    getDatingPrompts()
+      .then((p) => {
+        if (active) setDatingPrompts(p)
+      })
+      .catch(() => {})
+    return () => {
+      active = false
+    }
+  }, [])
 
   React.useEffect(() => {
     if (!isLoaded || !user) return
@@ -79,6 +101,7 @@ export function OnboardingAuthenticated() {
           mood: data.mood || undefined,
           avatarUrl: data.avatarUrl || undefined,
           interests: data.interests,
+          promptAnswers: data.promptAnswers,
           city: data.city,
           state: data.state,
           latitude: data.lat,
@@ -117,6 +140,7 @@ export function OnboardingAuthenticated() {
         mood: data.mood || undefined,
         avatarUrl: data.avatarUrl || undefined,
         interests: data.interests,
+        promptAnswers: data.promptAnswers,
         city: data.city,
         state: data.state,
         latitude: data.lat,
@@ -163,6 +187,7 @@ export function OnboardingAuthenticated() {
         submitLabel={isEditing ? 'Save changes' : undefined}
         onExit={isEditing ? () => router.push('/me') : undefined}
         lockIdentity={isEditing}
+        datingPrompts={datingPrompts}
       />
       {saving && (
         <p className="mt-4 text-center text-sm text-muted-foreground">Saving your profile…</p>

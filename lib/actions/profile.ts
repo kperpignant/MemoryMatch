@@ -7,9 +7,10 @@
  * UI ids use dashes ('soft-pixel-romance'); the DB stores underscores
  * ('soft_pixel_romance') per the PRD's documented values — converted here.
  */
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
+import { DATING_PROMPTS } from '@/lib/dating-prompts'
 import { db, schema } from '@/lib/db'
 import { ZODIAC_SIGNS } from '@/lib/horoscope'
 import { rateLimit } from '@/lib/ratelimit'
@@ -34,6 +35,43 @@ const INTENT_IDS = [
 const toDb = (id: string) => id.replace(/-/g, '_')
 const toUi = (v: string) => v.replace(/_/g, '-')
 
+export type DatingPrompt = { id: string; promptText: string }
+
+/** Dating prompts for onboarding — self-populates missing rows, curated order. */
+export async function getDatingPrompts(): Promise<DatingPrompt[]> {
+  const dbc = db()
+
+  const existing = await dbc
+    .select({ id: schema.prompts.id, promptText: schema.prompts.promptText })
+    .from(schema.prompts)
+    .where(eq(schema.prompts.category, 'dating'))
+
+  const byText = new Map(existing.map((r) => [r.promptText, r.id]))
+  const missing = DATING_PROMPTS.filter((text) => !byText.has(text))
+
+  if (missing.length > 0) {
+    await dbc
+      .insert(schema.prompts)
+      .values(missing.map((promptText) => ({ promptText, category: 'dating' })))
+
+    const refreshed = await dbc
+      .select({ id: schema.prompts.id, promptText: schema.prompts.promptText })
+      .from(schema.prompts)
+      .where(
+        and(
+          eq(schema.prompts.category, 'dating'),
+          inArray(schema.prompts.promptText, [...DATING_PROMPTS]),
+        ),
+      )
+    for (const row of refreshed) byText.set(row.promptText, row.id)
+  }
+
+  return DATING_PROMPTS.map((promptText) => ({
+    id: byText.get(promptText)!,
+    promptText,
+  })).filter((p) => p.id)
+}
+
 /** Current profile in UI shape, for prefilling the edit wizard. Null if none. */
 export async function getProfileForEdit() {
   const me = await requireUser()
@@ -52,6 +90,11 @@ export async function getProfileForEdit() {
     .where(eq(schema.profileInterests.profileId, p.id))
     .orderBy(asc(schema.profileInterests.position))
 
+  const answers = await dbc
+    .select({ promptId: schema.profilePromptAnswers.promptId, answer: schema.profilePromptAnswers.answer })
+    .from(schema.profilePromptAnswers)
+    .where(eq(schema.profilePromptAnswers.profileId, p.id))
+
   return {
     username: p.username,
     displayName: me.displayName,
@@ -62,6 +105,7 @@ export async function getProfileForEdit() {
     mood: p.moodStatus ?? '',
     avatarUrl: p.avatarUrl ?? '',
     interests: ints.map((i) => i.name),
+    promptAnswers: answers.map((a) => ({ promptId: a.promptId, answer: a.answer })),
     dateOfBirth: me.dateOfBirth ? String(me.dateOfBirth).slice(0, 10) : '',
     city: p.city ?? '',
     state: p.state ?? '',
@@ -101,6 +145,11 @@ const onboardingBase = z.object({
   avatarUrl: z.string().url().max(2048).optional(),
   /** Top 8, ordered; free-text allowed (upserted into `interests`) */
   interests: z.array(z.string().trim().min(1).max(40)).max(8).default([]),
+  /** Answers to the seeded dating prompts (optional). */
+  promptAnswers: z
+    .array(z.object({ promptId: z.string().uuid(), answer: z.string().trim().min(1).max(300) }))
+    .max(6)
+    .optional(),
   city: z.string().trim().min(1).max(100).optional(),
   state: z.string().trim().min(1).max(2).optional(),
   latitude: z.number().min(-90).max(90).optional(),
@@ -166,6 +215,7 @@ export async function completeOnboarding(
     .returning({ id: schema.profiles.id })
 
   await replaceTop8(profile.id, data.interests)
+  if (data.promptAnswers) await replacePromptAnswers(profile.id, data.promptAnswers)
 
   if (data.displayName !== me.displayName) {
     await dbc
@@ -225,6 +275,7 @@ export async function updateProfile(input: z.infer<typeof updateInput>) {
     .where(eq(schema.profiles.id, profile.id))
 
   if (data.interests) await replaceTop8(profile.id, data.interests)
+  if (data.promptAnswers) await replacePromptAnswers(profile.id, data.promptAnswers)
   if (data.displayName) {
     await dbc
       .update(schema.users)
@@ -240,6 +291,28 @@ export async function updateProfile(input: z.infer<typeof updateInput>) {
   })
 
   return { ok: true }
+}
+
+/** Replace the profile's prompt answers with the given set (dating prompts). */
+async function replacePromptAnswers(
+  profileId: string,
+  answers: { promptId: string; answer: string }[],
+) {
+  const dbc = db()
+  await dbc
+    .delete(schema.profilePromptAnswers)
+    .where(eq(schema.profilePromptAnswers.profileId, profileId))
+
+  // De-dupe by promptId (the table is unique on profile+prompt) and drop blanks.
+  const seen = new Set<string>()
+  const rows: { profileId: string; promptId: string; answer: string }[] = []
+  for (const { promptId, answer } of answers) {
+    const text = answer.trim()
+    if (!text || seen.has(promptId)) continue
+    seen.add(promptId)
+    rows.push({ profileId, promptId, answer: text })
+  }
+  if (rows.length > 0) await dbc.insert(schema.profilePromptAnswers).values(rows)
 }
 
 /** Resolve interest names (case-insensitive, upserting free-text) and replace the ordered Top 8. */
