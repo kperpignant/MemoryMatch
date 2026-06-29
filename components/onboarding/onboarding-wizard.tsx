@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils'
 import { LocationPicker, type LocationValue } from '@/components/location/location-picker'
 import { ZODIAC_SIGNS, SIGN_META } from '@/lib/horoscope'
 
+export type DatingPrompt = { id: string; promptText: string }
+
 export type OnboardingData = {
   username: string
   displayName: string
@@ -31,6 +33,7 @@ export type OnboardingData = {
   bio: string
   mood: string
   interests: string[]
+  promptAnswers: { promptId: string; answer: string }[]
   city?: string
   state?: string
   lat?: number
@@ -55,7 +58,9 @@ function maxDobFor18Plus(): string {
   return cutoff.toISOString().slice(0, 10)
 }
 
-const STEP_TITLES = ['Your name', 'Your vibe', 'Your look', 'Your top 8']
+const STEP_TITLES = ['Your name', 'Your vibe', 'Your look', 'Your questions', 'Your top 8']
+const STEP_COUNT = STEP_TITLES.length
+const LAST_STEP = STEP_COUNT - 1
 
 export function OnboardingWizard({
   onComplete,
@@ -63,6 +68,7 @@ export function OnboardingWizard({
   submitLabel,
   onExit,
   lockIdentity = false,
+  datingPrompts = [],
 }: {
   onComplete?: (data: OnboardingData) => void
   /** Prefilled values for edit mode (Vibe Page → Edit profile). */
@@ -74,6 +80,8 @@ export function OnboardingWizard({
   /** Lock identity fields (username, date of birth) — used when editing an
    *  existing profile so they can only be set once, at signup. */
   lockIdentity?: boolean
+  /** Seeded dating prompts the user can answer during onboarding. */
+  datingPrompts?: DatingPrompt[]
 }) {
   const [step, setStep] = React.useState(0)
   const [username, setUsername] = React.useState(initial?.username ?? '')
@@ -86,6 +94,11 @@ export function OnboardingWizard({
   const [bio, setBio] = React.useState(initial?.bio ?? '')
   const [mood, setMood] = React.useState(initial?.mood ?? '')
   const [interests, setInterests] = React.useState<string[]>(initial?.interests ?? [])
+  const [promptAnswers, setPromptAnswers] = React.useState<Record<string, string>>(() => {
+    const map: Record<string, string> = {}
+    for (const a of initial?.promptAnswers ?? []) map[a.promptId] = a.answer
+    return map
+  })
   const [location, setLocation] = React.useState<LocationValue | null>(() => {
     if (initial?.city && initial?.state && initial.lat != null && initial.lng != null) {
       return {
@@ -141,10 +154,13 @@ export function OnboardingWizard({
   }
 
   const canAdvance = step === 0 ? step1Valid : true
-  const isLast = step === 3
+  const isLast = step === LAST_STEP
 
   function next() {
     if (isLast) {
+      const answers = Object.entries(promptAnswers)
+        .map(([promptId, answer]) => ({ promptId, answer: answer.trim() }))
+        .filter((a) => a.answer.length > 0)
       onComplete?.({
         username,
         displayName,
@@ -156,6 +172,7 @@ export function OnboardingWizard({
         bio,
         mood,
         interests,
+        promptAnswers: answers,
         sunSign,
         moonSign,
         risingSign,
@@ -166,7 +183,7 @@ export function OnboardingWizard({
       })
       return
     }
-    setStep((s) => Math.min(3, s + 1))
+    setStep((s) => Math.min(LAST_STEP, s + 1))
   }
 
   return (
@@ -175,9 +192,9 @@ export function OnboardingWizard({
       <div className="mb-5">
         <div className="mb-2 flex items-center justify-between text-xs font-medium text-muted-foreground">
           <span>
-            Step {step + 1} of 4 · {STEP_TITLES[step]}
+            Step {step + 1} of {STEP_COUNT} · {STEP_TITLES[step]}
           </span>
-          <span>{Math.round(((step + 1) / 4) * 100)}%</span>
+          <span>{Math.round(((step + 1) / STEP_COUNT) * 100)}%</span>
         </div>
         <div className="flex gap-1.5" aria-hidden="true">
           {STEP_TITLES.map((_, i) => (
@@ -241,6 +258,13 @@ export function OnboardingWizard({
           />
         )}
         {step === 3 && (
+          <StepQuestions
+            prompts={datingPrompts}
+            answers={promptAnswers}
+            setAnswers={setPromptAnswers}
+          />
+        )}
+        {step === 4 && (
           <StepInterests
             interests={interests}
             setInterests={setInterests}
@@ -685,7 +709,74 @@ function SignSelect({
   )
 }
 
-/* ---------------- Step 4: interests (Top 8, drag to reorder) ---------------- */
+/* ---------------- Step 4: dating questions ---------------- */
+const MAX_ANSWERED_PROMPTS = 3
+
+function StepQuestions({
+  prompts,
+  answers,
+  setAnswers,
+}: {
+  prompts: DatingPrompt[]
+  answers: Record<string, string>
+  setAnswers: React.Dispatch<React.SetStateAction<Record<string, string>>>
+}) {
+  const answeredCount = Object.values(answers).filter((a) => a.trim().length > 0).length
+
+  function setAnswer(promptId: string, value: string) {
+    setAnswers((prev) => ({ ...prev, [promptId]: value }))
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-col gap-1">
+        <h1 className="font-heading text-xl font-bold text-foreground">
+          A few dating questions
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Optional, but they give people a real way in. Answer up to {MAX_ANSWERED_PROMPTS} —
+          they show on your Vibe Page.
+        </p>
+      </header>
+
+      {prompts.length === 0 ? (
+        <p className="rounded-xl bg-secondary/30 px-4 py-6 text-center text-sm text-muted-foreground">
+          No questions available right now — you can add answers later.
+        </p>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {prompts.map((p) => {
+            const value = answers[p.id] ?? ''
+            const isAnswered = value.trim().length > 0
+            const atCap = answeredCount >= MAX_ANSWERED_PROMPTS && !isAnswered
+            return (
+              <div key={p.id} className="flex flex-col gap-1.5">
+                <Label htmlFor={`prompt-${p.id}`} className="text-sm font-semibold text-foreground">
+                  {p.promptText}
+                </Label>
+                <Textarea
+                  id={`prompt-${p.id}`}
+                  value={value}
+                  onChange={(e) => setAnswer(p.id, e.target.value.slice(0, 300))}
+                  placeholder={atCap ? `Answer up to ${MAX_ANSWERED_PROMPTS} questions` : 'Your answer…'}
+                  rows={2}
+                  maxLength={300}
+                  disabled={atCap}
+                />
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        {answeredCount}/{MAX_ANSWERED_PROMPTS} answered
+      </p>
+    </div>
+  )
+}
+
+/* ---------------- Step 5: interests (Top 8, drag to reorder) ---------------- */
 function StepInterests({
   interests,
   setInterests,

@@ -8,16 +8,19 @@
  *
  * On like(A→B): require A == session user, reject blocked pairs, upsert the
  * like idempotently, and if B already liked A create a canonically-ordered
- * match (user_a < user_b) — but only when BOTH users are currently free, since
- * a person can hold only one active match at a time. If either is already
- * matched the like is still recorded, so the match can form later (when a
- * party unmatches, `reconcile` re-pairs them).
+ * match (user_a < user_b) — but only when BOTH users still have a free slot,
+ * since a person can hold up to MAX_ACTIVE_MATCHES active matches at a time. If
+ * either is at capacity the like is still recorded, so the match can form later
+ * (when a party unmatches, `reconcile` re-pairs them).
  */
-import { and, eq, inArray, or } from 'drizzle-orm'
+import { and, count, eq, inArray, or } from 'drizzle-orm'
 import { z } from 'zod'
 import { requireUser } from '@/lib/auth'
 import { db, schema } from '@/lib/db'
 import { rateLimit } from '@/lib/ratelimit'
+
+/** How many active matches a single user may hold at once. */
+const MAX_ACTIVE_MATCHES = 5
 
 const likeInput = z.object({ likedUserId: z.string().uuid() })
 
@@ -68,9 +71,13 @@ export async function likeUser(input: z.infer<typeof likeInput>): Promise<LikeRe
     .limit(1)
   if (reciprocal.length === 0) return { matched: false }
 
-  // Mutual like — form the match only if BOTH are free (one match at a time).
+  // Mutual like — form the match only if BOTH still have a free slot
+  // (up to MAX_ACTIVE_MATCHES at a time).
   const matchId = await dbc.transaction(async (tx) => {
-    if ((await hasActiveMatch(tx, me.id)) || (await hasActiveMatch(tx, likedUserId))) {
+    if (
+      (await activeMatchCount(tx, me.id)) >= MAX_ACTIVE_MATCHES ||
+      (await activeMatchCount(tx, likedUserId)) >= MAX_ACTIVE_MATCHES
+    ) {
       return null
     }
     return createMatch(tx, me.id, likedUserId)
@@ -113,9 +120,9 @@ export async function unmatch(input: z.infer<typeof unmatchInput>): Promise<{ ok
 
 type Tx = Parameters<Parameters<ReturnType<typeof db>['transaction']>[0]>[0]
 
-async function hasActiveMatch(tx: Tx, userId: string): Promise<boolean> {
+async function activeMatchCount(tx: Tx, userId: string): Promise<number> {
   const [row] = await tx
-    .select({ id: schema.matches.id })
+    .select({ value: count() })
     .from(schema.matches)
     .where(
       and(
@@ -123,8 +130,7 @@ async function hasActiveMatch(tx: Tx, userId: string): Promise<boolean> {
         or(eq(schema.matches.userAId, userId), eq(schema.matches.userBId, userId)),
       ),
     )
-    .limit(1)
-  return Boolean(row)
+  return row?.value ?? 0
 }
 
 /** Insert a canonically-ordered match (idempotent) + seed starters. Returns the match id. */
@@ -156,14 +162,16 @@ async function createMatch(tx: Tx, a: string, b: string): Promise<string> {
 }
 
 /**
- * After a user becomes free, try to pair them with the oldest mutual-like
- * partner who is also currently free, so a deferred match forms automatically.
+ * After a user frees up a slot, try to pair them with the oldest mutual-like
+ * partners who also have a free slot, filling up to MAX_ACTIVE_MATCHES so any
+ * deferred matches form automatically.
  */
 async function reconcile(userId: string): Promise<void> {
   const dbc = db()
 
   await dbc.transaction(async (tx) => {
-    if (await hasActiveMatch(tx, userId)) return
+    let slots = MAX_ACTIVE_MATCHES - (await activeMatchCount(tx, userId))
+    if (slots <= 0) return
 
     // Candidates: people I like who also like me, not blocked either way.
     const mutual = await tx
@@ -198,11 +206,12 @@ async function reconcile(userId: string): Promise<void> {
     )
 
     for (const { otherId } of mutual) {
+      if (slots <= 0) return
       if (!reciprocalSet.has(otherId)) continue
       if (blockedSet.has(otherId)) continue
-      if (await hasActiveMatch(tx, otherId)) continue
+      if ((await activeMatchCount(tx, otherId)) >= MAX_ACTIVE_MATCHES) continue
       await createMatch(tx, userId, otherId)
-      return
+      slots -= 1
     }
   })
 }

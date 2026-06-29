@@ -14,6 +14,7 @@
 import { config } from 'dotenv'
 config({ path: '.env.local' })
 import { and, eq } from 'drizzle-orm'
+import { DATING_PROMPTS } from '../lib/dating-prompts'
 import { db, schema } from '../lib/db'
 
 // The 4 reusable background tracks for the MVP (PRD §15). Audio lives in
@@ -304,14 +305,18 @@ async function main() {
     .onConflictDoNothing()
 
   console.log('Seeding prompts…')
-  for (const promptText of PROMPTS) {
+  const promptSeed: { promptText: string; category: string }[] = [
+    ...PROMPTS.map((promptText) => ({ promptText, category: 'personality' })),
+    ...DATING_PROMPTS.map((promptText) => ({ promptText, category: 'dating' })),
+  ]
+  for (const { promptText, category } of promptSeed) {
     const existing = await dbc
       .select({ id: schema.prompts.id })
       .from(schema.prompts)
       .where(eq(schema.prompts.promptText, promptText))
       .limit(1)
     if (existing.length === 0) {
-      await dbc.insert(schema.prompts).values({ promptText, category: 'personality' })
+      await dbc.insert(schema.prompts).values({ promptText, category })
     }
   }
 

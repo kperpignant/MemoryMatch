@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronUp, Minus, Send } from 'lucide-react'
+import { ArrowLeft, ChevronDown, ChevronUp, Minus, Send } from 'lucide-react'
 import { Y2KWindow } from '@/components/y2k-window'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,20 +19,28 @@ type ChatMessage = {
   readAt: string | null
 }
 
-type MatchInfo = {
-  id: string
+type Conversation = {
+  matchId: string
   partner: {
     username: string
     displayName: string
     reelThumb: string | null
   }
+  unreadCount: number
+  lastMessageAt: string | null
+  lastMessagePreview: string | null
 }
 
-type ChatState = {
-  match: MatchInfo | null
+type ListState = {
   meId: string
+  conversations: Conversation[]
+  totalUnread: number
+}
+
+type MessagesState = {
+  matchId: string
+  meId?: string
   messages: ChatMessage[]
-  unreadCount: number
 }
 
 const BASE_TITLE = 'MemoryMatch — Less swiping. More story.'
@@ -71,10 +79,11 @@ function latestCursor(msgs: ChatMessage[]): string | null {
 
 export function ChatDock() {
   const [expanded, setExpanded] = useState(false)
-  const [match, setMatch] = useState<MatchInfo | null>(null)
   const [meId, setMeId] = useState<string | null>(null)
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [totalUnread, setTotalUnread] = useState(0)
+  const [openMatchId, setOpenMatchId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [unreadCount, setUnreadCount] = useState(0)
   const [draft, setDraft] = useState('')
   const [isSending, startSend] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -84,121 +93,144 @@ export function ChatDock() {
   const bottomRef = useRef<HTMLDivElement>(null)
   const expandedRef = useRef(expanded)
   expandedRef.current = expanded
+  const openMatchRef = useRef<string | null>(openMatchId)
+  openMatchRef.current = openMatchId
 
   const updateTitle = useCallback((count: number) => {
     document.title = count > 0 ? `(${count}) ${BASE_TITLE}` : BASE_TITLE
   }, [])
 
-  const applyState = useCallback(
-    (data: ChatState, isIncremental: boolean) => {
-      if (!data.match) {
-        setMatch(null)
-        setMessages([])
-        setUnreadCount(0)
-        setMeId(null)
-        cursorRef.current = null
-        updateTitle(0)
-        return
-      }
+  const openConversation = conversations.find((c) => c.matchId === openMatchId) ?? null
 
-      setMatch(data.match)
-      setMeId(data.meId)
+  const fetchList = useCallback(async () => {
+    const res = await fetch('/api/chat/state', { cache: 'no-store' })
+    if (!res.ok) return
+    const data = (await res.json()) as ListState
+    setMeId(data.meId)
+    setConversations(data.conversations)
 
-      if (isIncremental && data.messages.length > 0) {
-        setMessages((prev) => {
-          const merged = mergeMessages(prev, data.messages)
-          cursorRef.current = latestCursor(merged)
-          return merged
-        })
-      } else if (!isIncremental) {
-        const merged = mergeMessages([], data.messages)
-        setMessages(merged)
+    const viewingOpen = expandedRef.current && openMatchRef.current !== null
+    if (data.totalUnread > prevUnreadRef.current && !viewingOpen) {
+      playNotifySound()
+    }
+    prevUnreadRef.current = data.totalUnread
+    setTotalUnread(data.totalUnread)
+    updateTitle(data.totalUnread)
+  }, [updateTitle])
+
+  const fetchMessages = useCallback(async (matchId: string, incremental: boolean) => {
+    const after = incremental ? cursorRef.current : null
+    const params = new URLSearchParams({ matchId })
+    if (after) params.set('after', after)
+    const res = await fetch(`/api/chat/state?${params.toString()}`, { cache: 'no-store' })
+    if (!res.ok) return
+    const data = (await res.json()) as MessagesState
+    if (data.matchId !== openMatchRef.current) return // switched away mid-flight
+    if (data.meId) setMeId(data.meId)
+
+    if (incremental && data.messages.length > 0) {
+      setMessages((prev) => {
+        const merged = mergeMessages(prev, data.messages)
         cursorRef.current = latestCursor(merged)
-      }
+        return merged
+      })
+    } else if (!incremental) {
+      const merged = mergeMessages([], data.messages)
+      setMessages(merged)
+      cursorRef.current = latestCursor(merged)
+    }
+  }, [])
 
-      const incomingFromOther = data.messages.some((m) => m.senderUserId !== data.meId)
-      const shouldNotify =
-        !expandedRef.current &&
-        incomingFromOther &&
-        data.unreadCount > prevUnreadRef.current
-
-      if (shouldNotify) playNotifySound()
-
-      prevUnreadRef.current = data.unreadCount
-      if (!expandedRef.current) {
-        setUnreadCount(data.unreadCount)
-        updateTitle(data.unreadCount)
+  const markRead = useCallback(
+    async (matchId: string) => {
+      try {
+        await markConversationRead({ matchId })
+        setConversations((prev) =>
+          prev.map((c) => (c.matchId === matchId ? { ...c, unreadCount: 0 } : c)),
+        )
+        setTotalUnread((prev) => {
+          const conv = conversations.find((c) => c.matchId === matchId)
+          const next = Math.max(0, prev - (conv?.unreadCount ?? 0))
+          prevUnreadRef.current = next
+          updateTitle(next)
+          return next
+        })
+      } catch {
+        // non-blocking
       }
     },
-    [updateTitle],
+    [conversations, updateTitle],
   )
 
-  const fetchState = useCallback(async (incremental: boolean) => {
-    const after = incremental ? cursorRef.current : null
-    const url = after
-      ? `/api/chat/state?after=${encodeURIComponent(after)}`
-      : '/api/chat/state'
-    const res = await fetch(url, { cache: 'no-store' })
-    if (!res.ok) return
-    const data = (await res.json()) as ChatState
-    applyState(data, incremental)
-  }, [applyState])
+  const handleOpenConversation = useCallback(
+    (matchId: string) => {
+      setOpenMatchId(matchId)
+      setMessages([])
+      cursorRef.current = null
+      setError(null)
+      void fetchMessages(matchId, false)
+      void markRead(matchId)
+    },
+    [fetchMessages, markRead],
+  )
 
-  const markRead = useCallback(async (matchId: string) => {
-    try {
-      await markConversationRead({ matchId })
-      setUnreadCount(0)
-      prevUnreadRef.current = 0
-      updateTitle(0)
-    } catch {
-      // non-blocking
-    }
-  }, [updateTitle])
+  const handleBackToList = useCallback(() => {
+    setOpenMatchId(null)
+    setMessages([])
+    cursorRef.current = null
+  }, [])
 
   const handleExpand = useCallback(() => {
     setExpanded(true)
-    if (match) void markRead(match.id)
-    setUnreadCount(0)
-    updateTitle(0)
-  }, [match, markRead, updateTitle])
+  }, [])
 
   const handleCollapse = useCallback(() => {
     setExpanded(false)
   }, [])
 
-  // Initial load + polling (cadence depends on expanded)
+  // Initial load + list polling
   useEffect(() => {
-    void fetchState(false)
-
-    const tick = () => {
-      if (!document.hidden) void fetchState(true)
-    }
-
+    void fetchList()
     const ms = expanded ? POLL_EXPANDED_MS : POLL_COLLAPSED_MS
+    const tick = () => {
+      if (!document.hidden) void fetchList()
+    }
     const interval = setInterval(tick, ms)
-
     const onVisibility = () => {
-      if (!document.hidden) void fetchState(true)
+      if (!document.hidden) void fetchList()
     }
     document.addEventListener('visibilitychange', onVisibility)
-
     return () => {
       clearInterval(interval)
       document.removeEventListener('visibilitychange', onVisibility)
       document.title = BASE_TITLE
     }
-  }, [fetchState, expanded])
+  }, [fetchList, expanded])
 
-  // Scroll to bottom when expanded and messages change
+  // Open-conversation message polling
   useEffect(() => {
-    if (expanded) {
+    if (!expanded || !openMatchId) return
+    const tick = () => {
+      if (!document.hidden) {
+        void fetchMessages(openMatchId, true)
+        void markRead(openMatchId)
+      }
+    }
+    const interval = setInterval(tick, POLL_EXPANDED_MS)
+    return () => clearInterval(interval)
+  }, [expanded, openMatchId, fetchMessages, markRead])
+
+  // Scroll to bottom when viewing a conversation and messages change
+  useEffect(() => {
+    if (expanded && openMatchId) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages, expanded])
+  }, [messages, expanded, openMatchId])
 
   function handleSend(e?: React.FormEvent) {
     e?.preventDefault()
-    if (!match || !draft.trim() || isSending) return
+    if (!openMatchId || !draft.trim() || isSending) return
+    const matchId = openMatchId
     const body = draft.trim()
     setDraft('')
     setError(null)
@@ -215,7 +247,7 @@ export function ChatDock() {
 
     startSend(async () => {
       try {
-        const row = await sendMessage({ matchId: match.id, body })
+        const row = await sendMessage({ matchId, body })
         setMessages((prev) => {
           const withoutOpt = prev.filter((m) => m.id !== optimistic.id)
           const merged = mergeMessages(withoutOpt, [
@@ -238,10 +270,9 @@ export function ChatDock() {
     })
   }
 
-  if (!match) return null
+  if (conversations.length === 0) return null
 
-  const { partner } = match
-
+  // Collapsed bubble
   if (!expanded) {
     return (
       <div className="fixed bottom-4 right-4 z-50">
@@ -249,31 +280,111 @@ export function ChatDock() {
           type="button"
           onClick={handleExpand}
           className="flex items-center gap-2 rounded-full border-2 border-primary/40 bg-card py-2 pl-2 pr-4 shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
-          aria-label={`Open chat with ${partner.displayName}`}
+          aria-label="Open messages"
         >
-          <span className="relative size-10 shrink-0 overflow-hidden rounded-full border border-border">
-            {partner.reelThumb ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={partner.reelThumb} alt="" className="size-full object-cover" />
-            ) : (
-              <span className="grid size-full place-items-center bg-secondary text-sm font-bold text-secondary-foreground">
-                {partner.displayName.charAt(0)}
+          <span className="relative flex -space-x-3">
+            {conversations.slice(0, 3).map((c) => (
+              <span
+                key={c.matchId}
+                className="size-10 shrink-0 overflow-hidden rounded-full border-2 border-card"
+              >
+                {c.partner.reelThumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.partner.reelThumb} alt="" className="size-full object-cover" />
+                ) : (
+                  <span className="grid size-full place-items-center bg-secondary text-sm font-bold text-secondary-foreground">
+                    {c.partner.displayName.charAt(0)}
+                  </span>
+                )}
               </span>
-            )}
-            {unreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 grid min-w-5 place-items-center rounded-full bg-[var(--mm-match)] px-1 text-[10px] font-bold text-[var(--mm-ink)]">
-                {unreadCount > 9 ? '9+' : unreadCount}
+            ))}
+            {totalUnread > 0 && (
+              <span className="absolute -right-1 -top-1 grid min-w-5 place-items-center rounded-full bg-[var(--mm-match)] px-1 text-[10px] font-bold text-[var(--mm-ink)]">
+                {totalUnread > 9 ? '9+' : totalUnread}
               </span>
             )}
           </span>
-          <span className="ml-2 max-w-32 truncate text-sm font-medium text-foreground">
-            {partner.displayName}
+          <span className="ml-2 text-sm font-medium text-foreground">
+            Messages
+            {conversations.length > 1 ? ` (${conversations.length})` : ''}
           </span>
           <ChevronUp size={16} className="ml-1 text-muted-foreground" aria-hidden />
         </button>
       </div>
     )
   }
+
+  // Expanded: conversation list
+  if (!openMatchId || !openConversation) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 w-[min(100vw-2rem,22rem)]">
+        <Y2KWindow
+          title="messages"
+          accent
+          actions={
+            <button
+              type="button"
+              onClick={handleCollapse}
+              className="grid size-6 place-items-center rounded-md hover:bg-black/10"
+              aria-label="Minimize messages"
+            >
+              <Minus size={14} />
+            </button>
+          }
+          bodyClassName="flex flex-col p-0"
+        >
+          <ScrollArea className="max-h-80">
+            <ul className="flex flex-col">
+              {conversations.map((c) => (
+                <li key={c.matchId}>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenConversation(c.matchId)}
+                    className="flex w-full items-center gap-3 border-b border-border px-3 py-2.5 text-left transition-colors hover:bg-secondary/40"
+                  >
+                    <span className="relative size-10 shrink-0 overflow-hidden rounded-full border border-border">
+                      {c.partner.reelThumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={c.partner.reelThumb} alt="" className="size-full object-cover" />
+                      ) : (
+                        <span className="grid size-full place-items-center bg-secondary text-sm font-bold text-secondary-foreground">
+                          {c.partner.displayName.charAt(0)}
+                        </span>
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {c.partner.displayName}
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {c.lastMessagePreview ?? 'Say hi — no pressure.'}
+                      </span>
+                    </span>
+                    {c.unreadCount > 0 && (
+                      <span className="grid min-w-5 shrink-0 place-items-center rounded-full bg-[var(--mm-match)] px-1 text-[10px] font-bold text-[var(--mm-ink)]">
+                        {c.unreadCount > 9 ? '9+' : c.unreadCount}
+                      </span>
+                    )}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </ScrollArea>
+        </Y2KWindow>
+        <button
+          type="button"
+          onClick={handleCollapse}
+          className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full border border-border bg-card p-0.5 shadow-sm"
+          aria-label="Collapse messages"
+        >
+          <ChevronDown size={14} className="text-muted-foreground" />
+        </button>
+      </div>
+    )
+  }
+
+  // Expanded: single conversation thread
+  const { partner } = openConversation
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-[min(100vw-2rem,22rem)]">
@@ -282,6 +393,14 @@ export function ChatDock() {
         accent
         actions={
           <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={handleBackToList}
+              className="mr-1 grid size-6 place-items-center rounded-md hover:bg-black/10"
+              aria-label="Back to messages"
+            >
+              <ArrowLeft size={14} />
+            </button>
             <Link
               href={`/vibe/${partner.username}`}
               className="mr-1 truncate text-xs underline opacity-90 hover:opacity-100"
@@ -297,7 +416,7 @@ export function ChatDock() {
               <Minus size={14} />
             </button>
             <Link
-              href={`/chemistry/${match.id}`}
+              href={`/chemistry/${openMatchId}`}
               className="grid size-6 place-items-center rounded-md hover:bg-black/10"
               aria-label="Open ReelChemistry"
             >
@@ -360,9 +479,7 @@ export function ChatDock() {
             <Send size={16} />
           </Button>
         </form>
-        {error && (
-          <p className="px-3 pb-2 text-xs text-destructive">{error}</p>
-        )}
+        {error && <p className="px-3 pb-2 text-xs text-destructive">{error}</p>}
       </Y2KWindow>
       <button
         type="button"

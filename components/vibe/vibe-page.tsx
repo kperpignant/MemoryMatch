@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Y2KWindow } from '@/components/y2k-window'
 import { PanelGrid } from '@/components/panel-grid'
 import { ReelPlayer, type ReelFrame } from '@/components/reel-player'
+import { ImageLightbox } from '@/components/image-lightbox'
 import { SafetyMenu } from '@/components/safety-menu'
 import { CharmComposer, type CharmKind } from '@/components/charm-composer'
 import { Button } from '@/components/ui/button'
@@ -61,6 +62,7 @@ export function VibePage({
   const [sentCharm, setSentCharm] = useState<CharmKind | null>(
     profile.alreadyCharmed ? 'wave' : null,
   )
+  const [charmError, setCharmError] = useState<string | null>(null)
   const [isLiking, startLikeTransition] = useTransition()
   const [likeError, setLikeError] = useState<string | null>(null)
   const { handleBlock, handleReport, feedback: safetyFeedback, isPending: safetyPending } =
@@ -88,6 +90,7 @@ export function VibePage({
 
   async function handleCharm({ kind, payload }: { kind: CharmKind; payload: string }) {
     if (!profile.reelThumbFrameId) return
+    setCharmError(null)
     try {
       await sendReaction({
         reelFrameId: profile.reelThumbFrameId,
@@ -95,8 +98,8 @@ export function VibePage({
         message: kind !== 'wave' ? payload : undefined,
       })
       setSentCharm(kind)
-    } catch {
-      // non-blocking — charm UI already closed
+    } catch (err) {
+      setCharmError(err instanceof Error ? err.message : 'Could not send your charm right now.')
     }
   }
 
@@ -109,7 +112,12 @@ export function VibePage({
           <Y2KWindow title={`${profile.username}.vibe`} accent>
             <div className="flex items-start gap-4">
               <div className="relative">
-                <div className="size-20 overflow-hidden rounded-2xl bg-secondary shadow-inner">
+                <ImageLightbox
+                  src={profile.avatarUrl}
+                  alt={profile.displayName}
+                  name={profile.displayName}
+                  className="block size-20 overflow-hidden rounded-2xl bg-secondary shadow-inner"
+                >
                   {profile.avatarUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -122,7 +130,7 @@ export function VibePage({
                       {profile.displayName.charAt(0)}
                     </div>
                   )}
-                </div>
+                </ImageLightbox>
                 {profile.online && (
                   <span
                     className="absolute -bottom-1 -right-1 size-5 rounded-full border-2 border-card bg-[var(--mm-match)]"
@@ -184,7 +192,6 @@ export function VibePage({
               beatLabel={profile.reel.beatLabel}
               beatSrc={profile.reel.beatSrc}
               beatStartSec={profile.reel.beatStartSec}
-              autoPlay
               edgeToEdge
             />
           </Y2KWindow>
@@ -220,11 +227,14 @@ export function VibePage({
                   size="lg"
                   className="w-full font-semibold"
                   onClick={() => setCharmOpen(true)}
-                  disabled={!profile.reelThumbFrameId}
+                  disabled={!profile.reelThumbFrameId || sentCharm !== null}
                 >
                   <PixelWave size={16} className="mr-1.5" />
-                  {sentCharm ? 'Charm sent! send another?' : 'Send a charm'}
+                  {sentCharm ? 'Charm sent' : 'Send a charm'}
                 </Button>
+                {charmError && (
+                  <p className="text-xs text-destructive">{charmError}</p>
+                )}
                 <Button
                   size="lg"
                   variant={liked ? 'secondary' : 'outline'}

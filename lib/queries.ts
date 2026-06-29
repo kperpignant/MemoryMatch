@@ -427,31 +427,32 @@ export type ReceivedCharm = {
   createdAt: Date
 }
 
+export type ActiveMatchSummary = {
+  matchId: string
+  username: string
+  displayName: string
+  mood: string | null
+  reelThumb: string | null
+}
+
 export type MyChemistry = {
-  activeMatch:
-    | {
-        matchId: string
-        username: string
-        displayName: string
-        mood: string | null
-        reelThumb: string | null
-      }
-    | null
+  activeMatches: ActiveMatchSummary[]
   receivedCharms: ReceivedCharm[]
 }
 
 /**
- * The signed-in user's ReelChemistry home: their one active match (if any) plus
- * the private charms others have sent them (reactions on their own reel frames).
- * Charms are recipient-only — never shown publicly or as counts.
+ * The signed-in user's ReelChemistry home: their active matches (up to the
+ * per-user cap) plus the private charms others have sent them (reactions on
+ * their own reel frames). Charms are recipient-only — never shown publicly or
+ * as counts.
  */
 export async function getMyChemistry(): Promise<MyChemistry> {
   const me = await requireUser()
   const dbc = db()
   const hidden = await blockedIdsFor(me.id)
 
-  // Active match (one at a time).
-  const [match] = await dbc
+  // Active matches (up to the per-user cap), newest first.
+  const matchRows = await dbc
     .select()
     .from(schema.matches)
     .where(
@@ -460,11 +461,12 @@ export async function getMyChemistry(): Promise<MyChemistry> {
         or(eq(schema.matches.userAId, me.id), eq(schema.matches.userBId, me.id)),
       ),
     )
-    .limit(1)
+    .orderBy(desc(schema.matches.createdAt))
 
-  let activeMatch: MyChemistry['activeMatch'] = null
-  if (match) {
+  const activeMatches: ActiveMatchSummary[] = []
+  for (const match of matchRows) {
     const otherId = match.userAId === me.id ? match.userBId : match.userAId
+    if (hidden.includes(otherId)) continue
     const [r] = await dbc
       .select({
         username: schema.profiles.username,
@@ -475,23 +477,22 @@ export async function getMyChemistry(): Promise<MyChemistry> {
       .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
       .where(eq(schema.profiles.userId, otherId))
       .limit(1)
-    if (r) {
-      const [thumb] = await dbc
-        .select({ url: schema.mediaItems.mediaUrl })
-        .from(schema.memoryReels)
-        .innerJoin(schema.reelFrames, eq(schema.reelFrames.reelId, schema.memoryReels.id))
-        .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
-        .where(and(eq(schema.memoryReels.userId, otherId), eq(schema.memoryReels.isActive, true)))
-        .orderBy(asc(schema.reelFrames.position))
-        .limit(1)
-      activeMatch = {
-        matchId: match.id,
-        username: r.username,
-        displayName: r.displayName,
-        mood: r.mood,
-        reelThumb: thumb?.url ?? null,
-      }
-    }
+    if (!r) continue
+    const [thumb] = await dbc
+      .select({ url: schema.mediaItems.mediaUrl })
+      .from(schema.memoryReels)
+      .innerJoin(schema.reelFrames, eq(schema.reelFrames.reelId, schema.memoryReels.id))
+      .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
+      .where(and(eq(schema.memoryReels.userId, otherId), eq(schema.memoryReels.isActive, true)))
+      .orderBy(asc(schema.reelFrames.position))
+      .limit(1)
+    activeMatches.push({
+      matchId: match.id,
+      username: r.username,
+      displayName: r.displayName,
+      mood: r.mood,
+      reelThumb: thumb?.url ?? null,
+    })
   }
 
   // Private received charms: reactions on my own reel frames, from active, non-blocked users.
@@ -545,7 +546,7 @@ export async function getMyChemistry(): Promise<MyChemistry> {
     })
   }
 
-  return { activeMatch, receivedCharms }
+  return { activeMatches, receivedCharms }
 }
 
 export type ChatMessage = {
@@ -556,28 +557,35 @@ export type ChatMessage = {
   readAt: Date | null
 }
 
-export type ActiveConversation = {
+export type ConversationSummary = {
   matchId: string
-  meId: string
   partner: {
     username: string
     displayName: string
     reelThumb: string | null
   }
-  messages: ChatMessage[]
   unreadCount: number
+  lastMessageAt: string | null
+  lastMessagePreview: string | null
+}
+
+export type ChatConversations = {
+  meId: string
+  conversations: ConversationSummary[]
+  totalUnread: number
 }
 
 /**
- * The signed-in user's active match conversation for chat polling.
- * When `after` is set, returns only messages newer than that timestamp;
- * otherwise returns the most recent 50 messages (ascending).
+ * Summaries of the signed-in user's active match conversations (up to the
+ * per-user cap), newest activity first, with per-conversation unread counts and
+ * a combined total for the collapsed chat badge. Blocked partners are excluded.
  */
-export async function getActiveConversation(after?: Date): Promise<ActiveConversation | null> {
+export async function getChatConversations(): Promise<ChatConversations> {
   const me = await requireUser()
   const dbc = db()
+  const hidden = await blockedIdsFor(me.id)
 
-  const [match] = await dbc
+  const matchRows = await dbc
     .select()
     .from(schema.matches)
     .where(
@@ -586,32 +594,103 @@ export async function getActiveConversation(after?: Date): Promise<ActiveConvers
         or(eq(schema.matches.userAId, me.id), eq(schema.matches.userBId, me.id)),
       ),
     )
+
+  const conversations: ConversationSummary[] = []
+  for (const match of matchRows) {
+    const otherId = match.userAId === me.id ? match.userBId : match.userAId
+    if (hidden.includes(otherId)) continue
+
+    const [partnerRow] = await dbc
+      .select({
+        username: schema.profiles.username,
+        displayName: schema.users.displayName,
+      })
+      .from(schema.profiles)
+      .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
+      .where(eq(schema.profiles.userId, otherId))
+      .limit(1)
+    if (!partnerRow) continue
+
+    const [thumb] = await dbc
+      .select({ url: schema.mediaItems.mediaUrl })
+      .from(schema.memoryReels)
+      .innerJoin(schema.reelFrames, eq(schema.reelFrames.reelId, schema.memoryReels.id))
+      .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
+      .where(and(eq(schema.memoryReels.userId, otherId), eq(schema.memoryReels.isActive, true)))
+      .orderBy(asc(schema.reelFrames.position))
+      .limit(1)
+
+    const [last] = await dbc
+      .select({ body: schema.messages.body, createdAt: schema.messages.createdAt })
+      .from(schema.messages)
+      .where(eq(schema.messages.matchId, match.id))
+      .orderBy(desc(schema.messages.createdAt))
+      .limit(1)
+
+    const [unread] = await dbc
+      .select({ count: sql<number>`count(*)::int` })
+      .from(schema.messages)
+      .where(
+        and(
+          eq(schema.messages.matchId, match.id),
+          ne(schema.messages.senderUserId, me.id),
+          isNull(schema.messages.readAt),
+        ),
+      )
+
+    conversations.push({
+      matchId: match.id,
+      partner: {
+        username: partnerRow.username,
+        displayName: partnerRow.displayName,
+        reelThumb: thumb?.url ?? null,
+      },
+      unreadCount: unread?.count ?? 0,
+      lastMessageAt: last?.createdAt?.toISOString() ?? null,
+      lastMessagePreview: last?.body ?? null,
+    })
+  }
+
+  // Most recent activity first; conversations with no messages sink to the bottom.
+  conversations.sort((a, b) => {
+    const ta = a.lastMessageAt ? new Date(a.lastMessageAt).getTime() : 0
+    const tb = b.lastMessageAt ? new Date(b.lastMessageAt).getTime() : 0
+    return tb - ta
+  })
+
+  const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0)
+  return { meId: me.id, conversations, totalUnread }
+}
+
+export type ConversationMessages = {
+  meId: string
+  messages: ChatMessage[]
+}
+
+/**
+ * Messages for one of the signed-in user's active matches, for chat polling.
+ * When `after` is set, returns only messages newer than that timestamp;
+ * otherwise returns the most recent 50 messages (ascending). Returns null if
+ * the match isn't an active conversation the viewer belongs to (or is blocked).
+ */
+export async function getConversationMessages(
+  matchId: string,
+  after?: Date,
+): Promise<ConversationMessages | null> {
+  const me = await requireUser()
+  const dbc = db()
+
+  const [match] = await dbc
+    .select()
+    .from(schema.matches)
+    .where(and(eq(schema.matches.id, matchId), eq(schema.matches.status, 'active')))
     .limit(1)
   if (!match) return null
+  if (match.userAId !== me.id && match.userBId !== me.id) return null
 
   const otherId = match.userAId === me.id ? match.userBId : match.userAId
   const hidden = await blockedIdsFor(me.id)
   if (hidden.includes(otherId)) return null
-
-  const [partnerRow] = await dbc
-    .select({
-      username: schema.profiles.username,
-      displayName: schema.users.displayName,
-    })
-    .from(schema.profiles)
-    .innerJoin(schema.users, eq(schema.profiles.userId, schema.users.id))
-    .where(eq(schema.profiles.userId, otherId))
-    .limit(1)
-  if (!partnerRow) return null
-
-  const [thumb] = await dbc
-    .select({ url: schema.mediaItems.mediaUrl })
-    .from(schema.memoryReels)
-    .innerJoin(schema.reelFrames, eq(schema.reelFrames.reelId, schema.memoryReels.id))
-    .innerJoin(schema.mediaItems, eq(schema.reelFrames.mediaItemId, schema.mediaItems.id))
-    .where(and(eq(schema.memoryReels.userId, otherId), eq(schema.memoryReels.isActive, true)))
-    .orderBy(asc(schema.reelFrames.position))
-    .limit(1)
 
   const messageWhere = after
     ? and(eq(schema.messages.matchId, match.id), gt(schema.messages.createdAt, after))
@@ -630,28 +709,7 @@ export async function getActiveConversation(after?: Date): Promise<ActiveConvers
     .orderBy(asc(schema.messages.createdAt))
     .limit(after ? 100 : 50)
 
-  const [unread] = await dbc
-    .select({ count: sql<number>`count(*)::int` })
-    .from(schema.messages)
-    .where(
-      and(
-        eq(schema.messages.matchId, match.id),
-        ne(schema.messages.senderUserId, me.id),
-        isNull(schema.messages.readAt),
-      ),
-    )
-
-  return {
-    matchId: match.id,
-    meId: me.id,
-    partner: {
-      username: partnerRow.username,
-      displayName: partnerRow.displayName,
-      reelThumb: thumb?.url ?? null,
-    },
-    messages: messageRows,
-    unreadCount: unread?.count ?? 0,
-  }
+  return { meId: me.id, messages: messageRows }
 }
 
 /** The 4 provided Profile Beats (seeded). */

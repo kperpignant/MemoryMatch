@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { SiteHeader } from '@/components/site-header'
 import { Y2KWindow } from '@/components/y2k-window'
 import { ButtonLink } from '@/components/button-link'
-import { PixelHeart, PixelWave, PixelStar } from '@/components/pixel-icons'
+import { MatchList } from '@/components/chemistry/match-list'
+import { PixelWave, PixelStar } from '@/components/pixel-icons'
 import { getMyChemistry } from '@/lib/queries'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +16,7 @@ const CHARM_LABEL: Record<string, string> = {
 }
 
 export default async function ChemistryHomePage() {
-  const { activeMatch, receivedCharms } = await getMyChemistry()
+  const { activeMatches, receivedCharms } = await getMyChemistry()
 
   return (
     <main className="min-h-dvh bg-background">
@@ -24,58 +25,14 @@ export default async function ChemistryHomePage() {
         <div className="mb-6">
           <h1 className="font-serif text-3xl text-foreground">ReelChemistry</h1>
           <p className="mt-1 text-pretty text-muted-foreground">
-            Your match and the charms people have quietly sent your way. Charms are
+            Your matches and the charms people have quietly sent your way. Charms are
             private — only you can see them, no counts or rankings.
           </p>
         </div>
 
-        {/* Current match */}
-        <Y2KWindow title="your match" accent>
-          {activeMatch ? (
-            <Link
-              href={`/chemistry/${activeMatch.matchId}`}
-              className="flex items-center gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/40"
-            >
-              <span className="relative size-14 shrink-0 overflow-hidden rounded-lg">
-                {activeMatch.reelThumb ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={activeMatch.reelThumb} alt="" className="size-full object-cover" />
-                ) : (
-                  <span className="grid size-full place-items-center bg-secondary text-lg font-bold text-secondary-foreground">
-                    {activeMatch.displayName.charAt(0)}
-                  </span>
-                )}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium text-foreground">
-                  {activeMatch.displayName}{' '}
-                  <span className="font-normal text-muted-foreground">
-                    @{activeMatch.username}
-                  </span>
-                </span>
-                {activeMatch.mood && (
-                  <span className="block truncate text-sm text-muted-foreground">
-                    {activeMatch.mood}
-                  </span>
-                )}
-              </span>
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[var(--mm-match)] px-3 py-1 text-sm font-semibold text-[var(--mm-ink)]">
-                <PixelHeart size={14} />
-                Open
-              </span>
-            </Link>
-          ) : (
-            <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                No match yet. You can only be matched with one person at a time — when you
-                and someone both like each other, you&apos;ll land here.
-              </p>
-              <ButtonLink href="/browse" variant="outline">
-                <PixelStar size={14} className="mr-1.5" />
-                Find someone
-              </ButtonLink>
-            </div>
-          )}
+        {/* Current matches (up to 5) */}
+        <Y2KWindow title="your matches" accent>
+          <MatchList matches={activeMatches} />
         </Y2KWindow>
 
         {/* Received charms (private) */}
